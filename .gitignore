@@ -1,0 +1,41 @@
+# Development tools
+gh_*/
+*.tar.gz
+*.zip
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# WordPress
+wp-config.php
+wp-content/uploads/
+wp-content/upgrade/
+wp-content/backup-db/
+wp-content/backups/
+wp-content/cache/
+wp-content/advanced-cache.php
+wp-content/wp-cache-config.php
+
+# Node
+node_modules/
+npm-debug.log
+
+# Composer
+vendor/
+composer.lock
+
+# Testing
+phpunit.xml
+.phpunit.result.cache
