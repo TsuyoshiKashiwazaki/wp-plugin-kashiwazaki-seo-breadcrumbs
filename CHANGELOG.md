@@ -5,7 +5,18 @@ All notable changes to Kashiwazaki SEO Perfect Breadcrumbs will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-09-11
+## [1.0.1] - 2025-09-27
+
+### Fixed
+- **Subdirectory Installation URL Structure** - Fixed breadcrumb generation to correctly parse URL structure when WordPress is installed in a subdirectory
+- **Home URL in Subdirectory Installations** - Home breadcrumb now correctly points to domain root instead of WordPress installation directory
+- **URL Path Parsing** - Improved URL segment extraction to include WordPress installation directory as part of the breadcrumb hierarchy
+
+### Improved
+- **URL Structure Analysis** - Enhanced to properly handle complete URL paths including WordPress subdirectories
+- **Breadcrumb Hierarchy** - Now correctly represents actual URL structure from domain root
+
+## [1.0.0] - 2025-09-21
 
 ### 🎉 Initial Release
 
@@ -15,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **404 Error Auto-avoidance** - Automatically detects broken links and uses alternative URLs
 - **301/302 Redirect Tracking** - Follows redirects to ensure valid breadcrumb links
 - **Schema.org Structured Data Support** - Automatically generates JSON-LD structured data for SEO
+- **Creator Credit Feature** - Outputs software creator information as structured data (SoftwareApplication schema)
 - **URL Scraping Feature** - Automatically fetches page titles from URLs
 - **24-hour Cache System** - Improves performance by caching URL check results and titles
 - **Cache Clear Function** - One-click cache clearing from admin panel
@@ -46,4 +58,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.0.1]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.1
 [1.0.0]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.0

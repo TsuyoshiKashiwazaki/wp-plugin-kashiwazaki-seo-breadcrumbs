@@ -3,7 +3,7 @@
  * Plugin Name: Kashiwazaki SEO Perfect Breadcrumbs
  * Plugin URI: https://www.tsuyoshikashiwazaki.jp
  * Description: 高度なSEO対策を実現する多機能パンくずリストプラグイン。URLステータスチェック機能により404エラーを自動回避し、常に最適なパンくずリストを生成。構造化データ対応、6種類のデザインパターン、自動挿入機能を搭載。サブディレクトリインストールにも完全対応。
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: 柏崎剛 (Tsuyoshi Kashiwazaki)
  * Author URI: https://www.tsuyoshikashiwazaki.jp/profile/
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 // プラグイン定数
 define('KSPB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('KSPB_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('KSPB_PLUGIN_VERSION', '1.0.0');
+define('KSPB_PLUGIN_VERSION', '1.0.1');
 define('KSPB_OPTION_NAME', 'kspb_options');
 define('KSPB_TEXT_DOMAIN', 'kashiwazaki-seo-perfect-breadcrumbs');
 
@@ -274,6 +274,18 @@ class KashiwazakiSeoPerfectBreadcrumbs {
      * 構造化データの追加
      */
     public function add_structured_data() {
+        // オプションを取得
+        $options = $this->get_options();
+
+        // ソフトウェア制作者クレジットの構造化データを出力（オプションが有効な場合のみ、1回のみ）
+        static $creator_credit_added = false;
+        if (!$creator_credit_added && !is_admin() && !empty($options['show_creator_credit'])) {
+            $creator_structured_data = $this->build_creator_structured_data();
+            echo '<script type="application/ld+json">' . wp_json_encode($creator_structured_data) . '</script>' . "\n";
+            $creator_credit_added = true;
+        }
+
+        // パンくずリストの構造化データ
         $breadcrumbs = $this->generate_breadcrumbs();
         if (empty($breadcrumbs)) {
             return;
@@ -300,6 +312,51 @@ class KashiwazakiSeoPerfectBreadcrumbs {
             '@context' => 'https://schema.org',
             '@type' => 'BreadcrumbList',
             'itemListElement' => $items
+        ];
+    }
+
+    /**
+     * ソフトウェア制作者の構造化データを構築
+     */
+    private function build_creator_structured_data() {
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'SoftwareApplication',
+            'name' => 'Kashiwazaki SEO Perfect Breadcrumbs',
+            'description' => '高度なSEO対策を実現する多機能パンくずリストプラグイン',
+            'applicationCategory' => 'Plugin',
+            'applicationSubCategory' => 'WordPress Plugin',
+            'operatingSystem' => 'WordPress',
+            'softwareVersion' => KSPB_PLUGIN_VERSION,
+            'creator' => [
+                '@type' => 'Person',
+                'name' => '柏崎剛',
+                'alternateName' => 'Tsuyoshi Kashiwazaki',
+                'url' => 'https://www.tsuyoshikashiwazaki.jp/profile/',
+                'sameAs' => [
+                    'https://www.tsuyoshikashiwazaki.jp'
+                ]
+            ],
+            'author' => [
+                '@type' => 'Person',
+                'name' => '柏崎剛',
+                'alternateName' => 'Tsuyoshi Kashiwazaki',
+                'url' => 'https://www.tsuyoshikashiwazaki.jp/profile/'
+            ],
+            'copyrightHolder' => [
+                '@type' => 'Person',
+                'name' => '柏崎剛',
+                'alternateName' => 'Tsuyoshi Kashiwazaki'
+            ],
+            'copyrightYear' => '2024',
+            'license' => 'https://www.gnu.org/licenses/gpl-2.0.html',
+            'url' => 'https://www.tsuyoshikashiwazaki.jp',
+            'offers' => [
+                '@type' => 'Offer',
+                'price' => '0',
+                'priceCurrency' => 'JPY'
+            ],
+            'softwareHelp' => 'https://www.tsuyoshikashiwazaki.jp'
         ];
     }
 
@@ -371,9 +428,13 @@ class KSPB_Breadcrumb_Builder {
      * パンくずリストを構築
      */
     public function build($options) {
-        
-        // ホームページの場合
-        if (is_front_page() || is_home()) {
+
+        // WordPressがサブディレクトリにインストールされているかチェック
+        $wp_path = parse_url(home_url(), PHP_URL_PATH) ?? '';
+        $has_subdirectory = !empty($wp_path) && $wp_path !== '/';
+
+        // ホームページの場合でも、サブディレクトリインストールの場合はURL構造を解析
+        if ((is_front_page() || is_home()) && !$has_subdirectory) {
             return $this->build_home_breadcrumbs($options);
         }
 
@@ -409,9 +470,13 @@ class KSPB_Breadcrumb_Builder {
      * ホーム項目を作成
      */
     private function create_home_item($text) {
+        // ドメインルートをホームとする（WordPressインストールディレクトリを除外）
+        $parsed_url = parse_url(home_url());
+        $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'] . '/';
+
         return [
             'title' => $text,
-            'url' => home_url('/'),
+            'url' => $domain_root,
             'position' => 1
         ];
     }
@@ -429,9 +494,14 @@ class KSPB_Breadcrumb_Builder {
         $options = $this->get_options();
         $enable_scraping = !empty($options['enable_scraping']);
 
-        // ドメインルートを取得
+        // ドメインルートを取得（サブディレクトリインストールを考慮）
         $parsed_url = parse_url(home_url());
         $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'];
+
+        // WordPressがサブディレクトリにインストールされている場合はそのパスも含める
+        if (!empty($parsed_url['path']) && $parsed_url['path'] !== '/') {
+            $domain_root .= rtrim($parsed_url['path'], '/');
+        }
 
         // スクレイパーを初期化（タイトル取得は常に必要）
         $scraper = new KSPB_URL_Scraper();
@@ -441,7 +511,11 @@ class KSPB_Breadcrumb_Builder {
 
         // 各セグメントを処理
         foreach ($segments as $index => $segment) {
+            // URL構造に基づいてパスを構築
             $accumulated_path = '/' . implode('/', array_slice($segments, 0, $index + 1));
+            // ドメインルートからの完全なURLを生成
+            $parsed_url = parse_url(home_url());
+            $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'];
             $url = $domain_root . $accumulated_path . '/';
             
             // 最後のセグメントかつ現在のページの場合の特別処理
@@ -539,17 +613,17 @@ class KSPB_Breadcrumb_Builder {
     }
 
     /**
-     * URLセグメントを取得（完全版 - サブディレクトリを削除しない）
+     * URLセグメントを取得（完全なURLパスを保持）
      */
     private function get_url_segments() {
+        // 完全なURLパスを取得（WordPressインストールディレクトリも含む）
         $request_uri = $_SERVER['REQUEST_URI'] ?? '';
         $url_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
 
-        // サブディレクトリインストールでも完全なパスを保持
+        // URLパスの全セグメントを取得
         $segments = array_filter(explode('/', trim($url_path, '/')));
-        
-        
-        return $segments;
+
+        return array_values($segments); // インデックスをリセット
     }
 
     /**

@@ -80,6 +80,10 @@ class KSPB_Admin_Page {
             'type' => 'checkbox',
             'sanitize' => 'rest_sanitize_boolean'
         ],
+        'show_creator_credit' => [
+            'type' => 'checkbox',
+            'sanitize' => 'rest_sanitize_boolean'
+        ],
     ];
     
     /**
@@ -186,6 +190,7 @@ class KSPB_Admin_Page {
                     <?php $this->render_home_settings_fields($options); ?>
                     <?php $this->render_separator_field($options); ?>
                     <?php $this->render_scraping_field($options); ?>
+                    <?php $this->render_creator_credit_field($options); ?>
                 </table>
                 
                 <?php submit_button(); ?>
@@ -416,6 +421,30 @@ class KSPB_Admin_Page {
         <?php
     }
     
+    /**
+     * 制作者クレジット設定フィールドを表示
+     */
+    private function render_creator_credit_field($options) {
+        $show_creator = $options['show_creator_credit'] ?? false;
+        ?>
+        <tr>
+            <th scope="row">制作者クレジット</th>
+            <td>
+                <label for="show_creator_credit">
+                    <input type="checkbox"
+                           name="show_creator_credit"
+                           id="show_creator_credit"
+                           <?php checked($show_creator); ?>>
+                    制作者情報の構造化データを出力する
+                </label>
+                <p class="description">
+                    柏崎剛様をソフトウェア制作者として構造化マークアップでクレジットします
+                </p>
+            </td>
+        </tr>
+        <?php
+    }
+
     /**
      * プレビューセクションを表示
      */

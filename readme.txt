@@ -3,7 +3,7 @@ Contributors: tsuyoshikashiwazaki
 Tags: breadcrumbs, seo, navigation, schema.org, structured data, パンくずリスト, 構造化データ
 Requires at least: 5.0
 Tested up to: 6.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -192,6 +192,12 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 
 == Changelog ==
 
+= 1.0.1 =
+* **修正: サブディレクトリインストール時のURL構造解析**
+* ホームURLがドメインルートを正しく指すように修正
+* WordPressインストールディレクトリもパンくず階層に含めるよう改善
+* URL構造の完全な解析により正確な階層表示を実現
+
 = 1.0.0 =
 * **革新的機能: URL構造ベースの階層解析エンジン実装**
 * URLパスから自動的に階層構造を構築
@@ -212,6 +218,9 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 * 日本語完全対応
 
 == Upgrade Notice ==
+
+= 1.0.1 =
+サブディレクトリインストール時のURL構造解析を修正。ホームURLが正しくドメインルートを指すようになりました。
 
 = 1.0.0 =
 初回リリース。安定版としてご利用いただけます。

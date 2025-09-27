@@ -1,9 +1,9 @@
 # 🚀 Kashiwazaki SEO Perfect Breadcrumbs
 
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)](https://wordpress.org/)
-[![PHP](https://img.shields.io/badge/PHP-7.2%2B-purple.svg)](https://php.net/)
+[![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/License-GPL--2.0--or--later-green.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
-[![Version](https://img.shields.io/badge/Version-1.0.0-orange.svg)](https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.1-orange.svg)](https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases)
 
 革新的なURL構造解析でパンくずを自動生成！WordPressの階層に依存せず、実際のURL構造から正確な階層を構築する次世代パンくずリストプラグイン。
 
@@ -124,7 +124,13 @@ if (function_exists('kspb_display_breadcrumbs')) {
 
 ## 📝 更新履歴
 
-### Version 1.0.0 (2025-09-11)
+### Version 1.0.1 (2025-09-27)
+- 🐛 サブディレクトリインストール時のURL構造解析を修正
+- 🔧 ホームURLがドメインルートを正しく指すように修正
+- 📍 WordPressインストールディレクトリもパンくず階層に含めるよう改善
+- ✨ URL構造の完全な解析により正確な階層表示を実現
+
+### Version 1.0.0 (2025-09-21)
 - 🎉 初回リリース
 - 🔍 革新的なURL構造ベースの階層解析エンジン実装
 - 🛡️ 404エラー自動回避機能
@@ -132,6 +138,7 @@ if (function_exists('kspb_display_breadcrumbs')) {
 - 🎨 3種類のデザインパターン
 - ⚡ 24時間キャッシュ機能
 - 🌐 サブディレクトリインストール完全対応
+- ✨ 制作者クレジット機能追加（SoftwareApplication構造化データ）
 
 詳細は[CHANGELOG.md](CHANGELOG.md)をご覧ください。
 
