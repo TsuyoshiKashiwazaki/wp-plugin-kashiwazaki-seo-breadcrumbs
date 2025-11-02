@@ -72,7 +72,15 @@ class KSPB_Admin_Page {
             'type' => 'checkbox',
             'sanitize' => 'rest_sanitize_boolean'
         ],
+        'show_breadcrumbs_all' => [
+            'type' => 'checkbox',
+            'sanitize' => 'rest_sanitize_boolean'
+        ],
         'post_types' => [
+            'type' => 'checkbox_group',
+            'sanitize' => 'array_map'
+        ],
+        'post_type_archives' => [
             'type' => 'checkbox_group',
             'sanitize' => 'array_map'
         ],
@@ -81,6 +89,26 @@ class KSPB_Admin_Page {
             'sanitize' => 'rest_sanitize_boolean'
         ],
         'show_creator_credit' => [
+            'type' => 'checkbox',
+            'sanitize' => 'rest_sanitize_boolean'
+        ],
+        'show_on_category' => [
+            'type' => 'checkbox',
+            'sanitize' => 'rest_sanitize_boolean'
+        ],
+        'show_on_tag' => [
+            'type' => 'checkbox',
+            'sanitize' => 'rest_sanitize_boolean'
+        ],
+        'show_on_date' => [
+            'type' => 'checkbox',
+            'sanitize' => 'rest_sanitize_boolean'
+        ],
+        'show_on_author' => [
+            'type' => 'checkbox',
+            'sanitize' => 'rest_sanitize_boolean'
+        ],
+        'show_on_home_posts' => [
             'type' => 'checkbox',
             'sanitize' => 'rest_sanitize_boolean'
         ],
@@ -275,38 +303,186 @@ class KSPB_Admin_Page {
      * 投稿タイプフィールドを表示
      */
     private function render_post_types_field($options, $post_types) {
+        $show_all = $options['show_breadcrumbs_all'] ?? true;
         ?>
         <tr>
-            <th scope="row">パンくずを表示するページ</th>
+            <th scope="row">パンくず表示設定</th>
             <td>
+                <style>
+                    .kspb-section { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; background: #f9f9f9; border-radius: 4px; }
+                    .kspb-section h4 { margin: 0 0 10px 0; padding-bottom: 10px; border-bottom: 2px solid #0073aa; color: #0073aa; font-size: 14px; }
+                    .kspb-section .kspb-bulk-actions { margin-bottom: 10px; padding: 8px; background: #fff; border: 1px solid #ddd; border-radius: 3px; }
+                    .kspb-section .kspb-bulk-actions button { margin-right: 5px; font-size: 11px; }
+                    .kspb-checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+                    .kspb-checkbox-grid label { display: block; margin: 0; padding: 6px; background: #fff; border: 1px solid #ddd; border-radius: 3px; transition: background-color 0.2s; }
+                    .kspb-checkbox-grid label:hover { background: #f0f0f0; }
+                    .kspb-checkbox-grid input[type="checkbox"] { margin-right: 6px; }
+                    .kspb-detail-settings { margin-top: 15px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 4px; }
+                    .kspb-main-toggle { padding: 15px; background: #e7f3ff; border: 2px solid #0073aa; border-radius: 4px; margin-bottom: 15px; }
+                    .kspb-main-toggle label { font-weight: bold; font-size: 14px; }
+                </style>
+
                 <fieldset>
                     <legend class="screen-reader-text">
-                        <span>パンくずを表示するページ</span>
+                        <span>パンくず表示設定</span>
                     </legend>
-                    
-                    <?php foreach ($post_types as $post_type): ?>
-                        <label style="display: block; margin-bottom: 5px;">
-                            <input type="checkbox" 
-                                   name="post_types[]" 
-                                   value="<?php echo esc_attr($post_type->name); ?>"
-                                   <?php checked(in_array($post_type->name, $options['post_types'] ?? [])); ?>>
-                            <?php echo esc_html($post_type->labels->name); ?>
+
+                    <!-- メイントグル -->
+                    <div class="kspb-main-toggle">
+                        <label>
+                            <input type="checkbox"
+                                   name="show_breadcrumbs_all"
+                                   id="kspb_show_all"
+                                   value="1"
+                                   <?php checked($show_all); ?>
+                                   onchange="kspbToggleDetails(this.checked)">
+                            すべてのページでパンくずを表示する
                         </label>
-                    <?php endforeach; ?>
-                    
-                    <h4 style="margin: 15px 0 5px 0;">特別なページ</h4>
-                    <label style="display: block; margin-bottom: 5px;">
-                        <input type="checkbox" 
-                               name="show_on_front_page" 
-                               value="1"
-                               <?php checked($options['show_on_front_page'] ?? false); ?>>
-                        フロントページ（トップページ）
-                    </label>
-                    
-                    <p class="description" style="margin-top: 10px;">
-                        ※ 自動挿入は投稿タイプとフロントページのみ対応しています。<br>
-                        アーカイブページではテーマファイルに <code>&lt;?php kspb_display_breadcrumbs(); ?&gt;</code> を追加してください。
-                    </p>
+                        <p class="description" style="margin: 8px 0 0 22px;">
+                            このチェックを外すと、ページごとに個別に設定できます。
+                        </p>
+                    </div>
+
+                    <!-- 詳細設定 -->
+                    <div id="kspb-detail-settings" class="kspb-detail-settings" style="display: <?php echo $show_all ? 'none' : 'block'; ?>;">
+                        <h3 style="margin-top: 0;">表示するページを選択</h3>
+                        <p class="description" style="margin-bottom: 15px;">
+                            チェックを入れたページでのみパンくずが表示されます。
+                        </p>
+
+                        <!-- 個別投稿ページ -->
+                        <div class="kspb-section">
+                            <h4>個別投稿ページ</h4>
+                            <div class="kspb-bulk-actions">
+                                <button type="button" class="button button-small" onclick="kspbBulkCheck('post_types', true)">すべて選択</button>
+                                <button type="button" class="button button-small" onclick="kspbBulkCheck('post_types', false)">すべて解除</button>
+                            </div>
+                            <div class="kspb-checkbox-grid">
+                                <?php foreach ($post_types as $post_type): ?>
+                                    <label>
+                                        <input type="checkbox"
+                                               class="kspb-check-post_types"
+                                               name="post_types[]"
+                                               value="<?php echo esc_attr($post_type->name); ?>"
+                                               <?php checked(in_array($post_type->name, $options['post_types'] ?? [])); ?>>
+                                        <?php echo esc_html($post_type->labels->name); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- カスタム投稿タイプアーカイブ -->
+                        <?php
+                        $custom_post_types = array_filter($post_types, function($pt) {
+                            return !in_array($pt->name, ['post', 'page', 'attachment']);
+                        });
+                        if (!empty($custom_post_types)):
+                        ?>
+                        <div class="kspb-section">
+                            <h4>カスタム投稿タイプアーカイブ</h4>
+                            <div class="kspb-bulk-actions">
+                                <button type="button" class="button button-small" onclick="kspbBulkCheck('post_type_archives', true)">すべて選択</button>
+                                <button type="button" class="button button-small" onclick="kspbBulkCheck('post_type_archives', false)">すべて解除</button>
+                            </div>
+                            <div class="kspb-checkbox-grid">
+                                <?php foreach ($custom_post_types as $post_type): ?>
+                                    <label>
+                                        <input type="checkbox"
+                                               class="kspb-check-post_type_archives"
+                                               name="post_type_archives[]"
+                                               value="<?php echo esc_attr($post_type->name); ?>"
+                                               <?php checked(in_array($post_type->name, $options['post_type_archives'] ?? [])); ?>>
+                                        <?php echo esc_html($post_type->labels->name); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- 標準アーカイブページ -->
+                        <div class="kspb-section">
+                            <h4>標準アーカイブページ</h4>
+                            <div class="kspb-bulk-actions">
+                                <button type="button" class="button button-small" onclick="kspbBulkCheck('standard_archives', true)">すべて選択</button>
+                                <button type="button" class="button button-small" onclick="kspbBulkCheck('standard_archives', false)">すべて解除</button>
+                            </div>
+                            <div class="kspb-checkbox-grid">
+                                <label>
+                                    <input type="checkbox"
+                                           class="kspb-check-standard_archives"
+                                           name="show_on_category"
+                                           value="1"
+                                           <?php checked($options['show_on_category'] ?? false); ?>>
+                                    カテゴリーアーカイブ
+                                </label>
+                                <label>
+                                    <input type="checkbox"
+                                           class="kspb-check-standard_archives"
+                                           name="show_on_tag"
+                                           value="1"
+                                           <?php checked($options['show_on_tag'] ?? false); ?>>
+                                    タグアーカイブ
+                                </label>
+                                <label>
+                                    <input type="checkbox"
+                                           class="kspb-check-standard_archives"
+                                           name="show_on_date"
+                                           value="1"
+                                           <?php checked($options['show_on_date'] ?? false); ?>>
+                                    日付アーカイブ
+                                </label>
+                                <label>
+                                    <input type="checkbox"
+                                           class="kspb-check-standard_archives"
+                                           name="show_on_author"
+                                           value="1"
+                                           <?php checked($options['show_on_author'] ?? false); ?>>
+                                    著者アーカイブ
+                                </label>
+                                <label>
+                                    <input type="checkbox"
+                                           class="kspb-check-standard_archives"
+                                           name="show_on_home_posts"
+                                           value="1"
+                                           <?php checked($options['show_on_home_posts'] ?? false); ?>>
+                                    投稿一覧ページ
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 特別なページ -->
+                        <div class="kspb-section">
+                            <h4>特別なページ</h4>
+                            <div class="kspb-checkbox-grid">
+                                <label>
+                                    <input type="checkbox"
+                                           name="show_on_front_page"
+                                           value="1"
+                                           <?php checked($options['show_on_front_page'] ?? false); ?>>
+                                    フロントページ（トップページ）
+                                </label>
+                            </div>
+                        </div>
+
+                        <p class="description" style="margin-top: 15px;">
+                            ※ 自動挿入は投稿タイプとフロントページのみ対応しています。<br>
+                            アーカイブページではテーマファイルに <code>&lt;?php kspb_display_breadcrumbs(); ?&gt;</code> を追加してください。
+                        </p>
+                    </div>
+
+                    <script>
+                    function kspbBulkCheck(group, checked) {
+                        var checkboxes = document.querySelectorAll('.kspb-check-' + group);
+                        checkboxes.forEach(function(checkbox) {
+                            checkbox.checked = checked;
+                        });
+                    }
+
+                    function kspbToggleDetails(showAll) {
+                        var detailSettings = document.getElementById('kspb-detail-settings');
+                        detailSettings.style.display = showAll ? 'none' : 'block';
+                    }
+                    </script>
                 </fieldset>
             </td>
         </tr>

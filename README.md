@@ -1,25 +1,25 @@
-# 🚀 Kashiwazaki SEO Perfect Breadcrumbs
+# Kashiwazaki SEO Perfect Breadcrumbs
 
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/License-GPL--2.0--or--later-green.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
-[![Version](https://img.shields.io/badge/Version-1.0.1-orange.svg)](https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.2--dev-orange.svg)](https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases)
 
 革新的なURL構造解析でパンくずを自動生成！WordPressの階層に依存せず、実際のURL構造から正確な階層を構築する次世代パンくずリストプラグイン。
 
-> 🎯 **URL構造をベースにした革新的な階層解析エンジンで、サイトの真の階層構造を可視化**
+> **URL構造をベースにした革新的な階層解析エンジンで、サイトの真の階層構造を可視化**
 
-## 🌟 最大の特徴：URL構造ベースの階層解析
+## 最大の特徴：URL構造ベースの階層解析
 
 従来のWordPressパンくずプラグインは、投稿の親子関係やカテゴリー構造に依存していました。しかし、実際のサイトではURLと内部構造が一致しないことが多く、ユーザーが期待する階層とは異なるパンくずが表示される問題がありました。
 
 **本プラグインの革新的アプローチ:**
-- 🔍 **実際のURL構造を解析** - `/company/about/team/` → 会社情報 > 会社概要 > チーム
-- 🚫 **WordPressの階層に依存しない** - 固定ページの親子関係に縛られない
-- 🎯 **直感的な階層表示** - URLパスがそのままユーザーが理解しやすい階層に
-- 🌐 **外部ディレクトリも認識** - WordPress外のディレクトリも階層に含められる
+- **実際のURL構造を解析** - `/company/about/team/` → 会社情報 > 会社概要 > チーム
+- **WordPressの階層に依存しない** - 固定ページの親子関係に縛られない
+- **直感的な階層表示** - URLパスがそのままユーザーが理解しやすい階層に
+- **外部ディレクトリも認識** - WordPress外のディレクトリも階層に含められる
 
-### 📊 動作例
+### 動作例
 
 ```
 URL: https://example.com/products/electronics/smartphones/iphone/
@@ -28,7 +28,7 @@ URL: https://example.com/products/electronics/smartphones/iphone/
 本プラグイン: ホーム > 製品 > 家電 > スマートフォン > iPhone（URL構造から自動生成）
 ```
 
-## 🚀 主な機能
+## 主な機能
 
 ### 1. インテリジェントURL解析
 - URLパスから自動的に階層構造を構築
@@ -59,7 +59,7 @@ URL: https://example.com/products/electronics/smartphones/iphone/
 - SVGアイコン付きの視覚的な表示
 - レスポンシブデザイン完全対応
 
-## 💡 最適な使用シーン
+## 最適な使用シーン
 
 - **複雑なURL構造のサイト**: `/services/web-design/portfolio/` のような深い階層を正確に表現
 - **カスタム投稿タイプ中心のサイト**: WordPressの内部構造に関係なくURL通りの階層を表示
@@ -67,7 +67,7 @@ URL: https://example.com/products/electronics/smartphones/iphone/
 - **サブディレクトリインストール**: `/blog/` や `/shop/` などのサブディレクトリでも正確に動作
 - **多言語サイト**: `/en/about/` や `/ja/about/` のような言語別URLでも適切に階層化
 
-## 🚀 クイックスタート
+## クイックスタート
 
 ### 自動インストール
 
@@ -82,7 +82,7 @@ URL: https://example.com/products/electronics/smartphones/iphone/
 2. `kashiwazaki-seo-breadcrumbs`フォルダを`/wp-content/plugins/`ディレクトリにアップロード
 3. WordPress管理画面の「プラグイン」メニューから有効化
 
-## 📖 使い方
+## 使い方
 
 ### 方法1: 自動挿入（推奨）
 設定画面で投稿タイプを選択するだけで自動的に表示されます。
@@ -101,7 +101,7 @@ if (function_exists('kspb_display_breadcrumbs')) {
 [kspb_breadcrumbs]
 ```
 
-## ⚙️ 設定
+## 設定
 
 管理画面の「Kashiwazaki SEO Perfect Breadcrumbs」メニューから以下の設定が可能：
 
@@ -109,7 +109,7 @@ if (function_exists('kspb_display_breadcrumbs')) {
 - **デザイン設定**: パターン、フォントサイズ、区切り文字
 - **機能設定**: URLスクレイピング、キャッシュ管理
 
-## 📋 技術仕様
+## 技術仕様
 
 ### 必要環境
 - WordPress 5.0以上
@@ -122,37 +122,50 @@ if (function_exists('kspb_display_breadcrumbs')) {
 - Safari（最新版）
 - Edge（最新版）
 
-## 📝 更新履歴
+## 更新履歴
 
-### Version 1.0.1 (2025-09-27)
-- 🐛 サブディレクトリインストール時のURL構造解析を修正
-- 🔧 ホームURLがドメインルートを正しく指すように修正
-- 📍 WordPressインストールディレクトリもパンくず階層に含めるよう改善
-- ✨ URL構造の完全な解析により正確な階層表示を実現
+### Version 1.0.2 (2025-11-02)
+- アーカイブページ表示制御機能を追加
+- カスタム投稿タイプアーカイブの個別制御を追加
+- 「すべてのページで表示」シンプルモードを追加（デフォルトON）
+- 詳細設定の折りたたみUIを追加
+- セクションごとの一括選択/解除ボタンを追加
+- グリッドレイアウトで管理画面を改善
+- カスタム投稿タイプアーカイブと個別投稿を分離
+- イレギュラーなカスタムアーカイブページ（poll/datasets等）に対応
+- 構造化データ出力に設定チェックを追加
+- ショートコード・テーマ関数に設定チェックを追加
+- 構造化データ出力をHTMLコメントで識別可能に
+
+### Version 1.0.1 (2025-10-23)
+- サブディレクトリインストール時のURL構造解析を修正
+- ホームURLがドメインルートを正しく指すように修正
+- WordPressインストールディレクトリもパンくず階層に含めるよう改善
+- URL構造の完全な解析により正確な階層表示を実現
 
 ### Version 1.0.0 (2025-09-21)
-- 🎉 初回リリース
-- 🔍 革新的なURL構造ベースの階層解析エンジン実装
-- 🛡️ 404エラー自動回避機能
-- 📊 Schema.org構造化データ対応
-- 🎨 3種類のデザインパターン
-- ⚡ 24時間キャッシュ機能
-- 🌐 サブディレクトリインストール完全対応
-- ✨ 制作者クレジット機能追加（SoftwareApplication構造化データ）
+- 初回リリース
+- 革新的なURL構造ベースの階層解析エンジン実装
+- 404エラー自動回避機能
+- Schema.org構造化データ対応
+- 3種類のデザインパターン
+- 24時間キャッシュ機能
+- サブディレクトリインストール完全対応
+- 制作者クレジット機能追加（SoftwareApplication構造化データ）
 
 詳細は[CHANGELOG.md](CHANGELOG.md)をご覧ください。
 
-## 📄 ライセンス
+## ライセンス
 
 GPL-2.0-or-later
 
-## 👨‍💻 サポート・開発者
+## サポート・開発者
 
-**開発者**: 柏崎剛 (Tsuyoshi Kashiwazaki)  
-**ウェブサイト**: https://www.tsuyoshikashiwazaki.jp/  
+**開発者**: 柏崎剛 (Tsuyoshi Kashiwazaki)
+**ウェブサイト**: https://www.tsuyoshikashiwazaki.jp/
 **サポート**: プラグインに関するご質問や不具合報告は、開発者ウェブサイトまでお問い合わせください。
 
-## 🤝 貢献
+## 貢献
 
 プルリクエストは歓迎です。大きな変更の場合は、まずissueを開いて変更内容について議論してください。
 
@@ -162,7 +175,7 @@ GPL-2.0-or-later
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📞 サポート
+## サポート
 
 - **公式サイト**: https://www.tsuyoshikashiwazaki.jp
 - **サポートフォーラム**: WordPress.orgのサポートフォーラム
@@ -172,8 +185,8 @@ GPL-2.0-or-later
 
 <div align="center">
 
-**🔍 Keywords**: WordPress, Breadcrumbs, SEO, URL Structure, Schema.org, Structured Data, Navigation, パンくずリスト, 構造化データ
+**Keywords**: WordPress, Breadcrumbs, SEO, URL Structure, Schema.org, Structured Data, Navigation, パンくずリスト, 構造化データ
 
-Made with ❤️ by [Tsuyoshi Kashiwazaki](https://github.com/TsuyoshiKashiwazaki)
+Made by [Tsuyoshi Kashiwazaki](https://github.com/TsuyoshiKashiwazaki)
 
 </div>

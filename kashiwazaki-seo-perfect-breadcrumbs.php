@@ -3,7 +3,7 @@
  * Plugin Name: Kashiwazaki SEO Perfect Breadcrumbs
  * Plugin URI: https://www.tsuyoshikashiwazaki.jp
  * Description: 高度なSEO対策を実現する多機能パンくずリストプラグイン。URLステータスチェック機能により404エラーを自動回避し、常に最適なパンくずリストを生成。構造化データ対応、6種類のデザインパターン、自動挿入機能を搭載。サブディレクトリインストールにも完全対応。
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: 柏崎剛 (Tsuyoshi Kashiwazaki)
  * Author URI: https://www.tsuyoshikashiwazaki.jp/profile/
  * License: GPL v2 or later
@@ -17,14 +17,16 @@ if (!defined('ABSPATH')) {
 // プラグイン定数
 define('KSPB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('KSPB_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('KSPB_PLUGIN_VERSION', '1.0.1');
+define('KSPB_PLUGIN_VERSION', '1.0.2');
 define('KSPB_OPTION_NAME', 'kspb_options');
 define('KSPB_TEXT_DOMAIN', 'kashiwazaki-seo-perfect-breadcrumbs');
 
 // デフォルト設定
 define('KSPB_DEFAULT_OPTIONS', [
     'position' => 'top',
+    'show_breadcrumbs_all' => true,
     'post_types' => [],
+    'post_type_archives' => [],
     'show_home' => true,
     'home_text' => 'ホーム',
     'separator' => '>',
@@ -32,7 +34,12 @@ define('KSPB_DEFAULT_OPTIONS', [
     'pattern' => 'classic',
     'font_size' => 14,
     'show_on_front_page' => false,
-    'enable_scraping' => true
+    'enable_scraping' => true,
+    'show_on_category' => true,
+    'show_on_tag' => true,
+    'show_on_date' => true,
+    'show_on_author' => true,
+    'show_on_home_posts' => true
 ]);
 
 /**
@@ -228,6 +235,12 @@ class KashiwazakiSeoPerfectBreadcrumbs {
      * パンくずリストを表示すべきか判定
      */
     private function should_display_breadcrumbs($options) {
+        // すべてのページで表示する設定の場合
+        if (!empty($options['show_breadcrumbs_all'])) {
+            return true;
+        }
+
+        // 個別設定モード
         // フロントページの場合
         if (is_front_page()) {
             return !empty($options['show_on_front_page']);
@@ -239,9 +252,49 @@ class KashiwazakiSeoPerfectBreadcrumbs {
             return in_array($post_type, $options['post_types'], true);
         }
 
-        // アーカイブページは常に表示可能（手動で関数を呼び出すため）
+        // アーカイブページの場合
         if (is_archive() || is_home()) {
-            return true;
+            // カスタム投稿タイプアーカイブの場合は専用設定をチェック
+            if (is_post_type_archive()) {
+                $post_type = get_post_type_object(get_query_var('post_type'));
+                if ($post_type) {
+                    return in_array($post_type->name, $options['post_type_archives'] ?? [], true);
+                }
+            }
+
+            // イレギュラーなカスタムアーカイブページ（poll/datasetsなど）
+            // カスタムクエリ変数で投稿タイプを特定
+            if (get_query_var('kashiwazaki_poll_datasets_page')) {
+                return in_array('poll', $options['post_type_archives'] ?? [], true);
+            }
+
+            // カテゴリーアーカイブ
+            if (is_category()) {
+                return !empty($options['show_on_category']);
+            }
+
+            // タグアーカイブ
+            if (is_tag()) {
+                return !empty($options['show_on_tag']);
+            }
+
+            // 日付アーカイブ
+            if (is_date()) {
+                return !empty($options['show_on_date']);
+            }
+
+            // 著者アーカイブ
+            if (is_author()) {
+                return !empty($options['show_on_author']);
+            }
+
+            // 投稿一覧ページ（ブログホーム）
+            if (is_home()) {
+                return !empty($options['show_on_home_posts']);
+            }
+
+            // その他のアーカイブ（デフォルトfalse）
+            return false;
         }
 
         return false;
@@ -267,6 +320,13 @@ class KashiwazakiSeoPerfectBreadcrumbs {
      * ショートコード処理
      */
     public function breadcrumbs_shortcode($atts) {
+        $options = $this->get_options();
+
+        // 表示条件をチェック
+        if (!$this->should_display_breadcrumbs($options)) {
+            return '';
+        }
+
         return $this->render_breadcrumbs();
     }
 
@@ -277,11 +337,18 @@ class KashiwazakiSeoPerfectBreadcrumbs {
         // オプションを取得
         $options = $this->get_options();
 
+        // 表示条件をチェック
+        if (!$this->should_display_breadcrumbs($options)) {
+            return;
+        }
+
         // ソフトウェア制作者クレジットの構造化データを出力（オプションが有効な場合のみ、1回のみ）
         static $creator_credit_added = false;
         if (!$creator_credit_added && !is_admin() && !empty($options['show_creator_credit'])) {
             $creator_structured_data = $this->build_creator_structured_data();
+            echo "\n" . '<!-- Kashiwazaki SEO Perfect Breadcrumbs: Creator Credit Schema -->' . "\n";
             echo '<script type="application/ld+json">' . wp_json_encode($creator_structured_data) . '</script>' . "\n";
+            echo '<!-- /Kashiwazaki SEO Perfect Breadcrumbs: Creator Credit Schema -->' . "\n\n";
             $creator_credit_added = true;
         }
 
@@ -292,7 +359,9 @@ class KashiwazakiSeoPerfectBreadcrumbs {
         }
 
         $structured_data = $this->build_structured_data($breadcrumbs);
+        echo "\n" . '<!-- Kashiwazaki SEO Perfect Breadcrumbs: BreadcrumbList Schema -->' . "\n";
         echo '<script type="application/ld+json">' . wp_json_encode($structured_data) . '</script>' . "\n";
+        echo '<!-- /Kashiwazaki SEO Perfect Breadcrumbs: BreadcrumbList Schema -->' . "\n\n";
     }
 
     /**
@@ -1482,5 +1551,16 @@ KashiwazakiSeoPerfectBreadcrumbs::get_instance();
 // グローバル関数として提供
 function kspb_display_breadcrumbs() {
     $instance = KashiwazakiSeoPerfectBreadcrumbs::get_instance();
+    $options = $instance->get_options();
+
+    // 表示条件をチェック
+    $reflection = new ReflectionClass($instance);
+    $method = $reflection->getMethod('should_display_breadcrumbs');
+    $method->setAccessible(true);
+
+    if (!$method->invoke($instance, $options)) {
+        return;
+    }
+
     echo $instance->render_breadcrumbs();
 }

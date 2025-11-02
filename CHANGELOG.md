@@ -5,16 +5,34 @@ All notable changes to Kashiwazaki SEO Perfect Breadcrumbs will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2025-09-27
+## [1.0.2] - 2025-11-02
+
+### Added
+- アーカイブページ表示制御機能を追加
+- カスタム投稿タイプアーカイブの個別制御を追加
+- 「すべてのページで表示」シンプルモードを追加（デフォルトON）
+- 詳細設定の折りたたみUIを追加
+- セクションごとの一括選択/解除ボタンを追加
+- グリッドレイアウトで管理画面を改善
 
 ### Fixed
-- **Subdirectory Installation URL Structure** - Fixed breadcrumb generation to correctly parse URL structure when WordPress is installed in a subdirectory
-- **Home URL in Subdirectory Installations** - Home breadcrumb now correctly points to domain root instead of WordPress installation directory
-- **URL Path Parsing** - Improved URL segment extraction to include WordPress installation directory as part of the breadcrumb hierarchy
+- カスタム投稿タイプアーカイブと個別投稿を分離
+- イレギュラーなカスタムアーカイブページ（poll/datasets等）に対応
+- 構造化データ出力に設定チェックを追加
+- ショートコード・テーマ関数に設定チェックを追加
 
 ### Improved
-- **URL Structure Analysis** - Enhanced to properly handle complete URL paths including WordPress subdirectories
-- **Breadcrumb Hierarchy** - Now correctly represents actual URL structure from domain root
+- 構造化データ出力をHTMLコメントで識別可能に
+
+## [1.0.1] - 2025-10-23
+
+### Fixed
+- サブディレクトリインストール時のURL構造解析を修正
+- ホームURLがドメインルートを正しく指すように修正
+
+### Improved
+- WordPressインストールディレクトリもパンくず階層に含めるよう改善
+- URL構造の完全な解析により正確な階層表示を実現
 
 ## [1.0.0] - 2025-09-21
 
@@ -58,5 +76,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[1.0.1]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.1
 [1.0.0]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.0
