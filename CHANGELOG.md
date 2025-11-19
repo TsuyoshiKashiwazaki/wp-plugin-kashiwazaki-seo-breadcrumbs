@@ -5,6 +5,19 @@ All notable changes to Kashiwazaki SEO Perfect Breadcrumbs will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-11-19
+
+### Fixed
+- 日本語パーマリンク（マルチバイト文字URL）で404エラーが発生する問題を修正
+- URLエンコーディングの大文字小文字を統一（%E3 → %e3）してリンク不一致を解消
+
+### Added
+- 投稿（post）とカスタム投稿タイプの個別記事タイトル取得処理を追加
+
+### Improved
+- URLセグメントのデコード処理を実装してWordPress内部検索を最適化
+- パーセントエンコーディング小文字化関数を追加してURL一貫性を向上
+
 ## [1.0.2] - 2025-11-02
 
 ### Added

@@ -1,41 +1,30 @@
-# Development tools
-gh_*/
-*.tar.gz
-*.zip
-
-# Temporary files
-*.tmp
-*.temp
-*.log
-*.cache
-
-# OS specific
-.DS_Store
-Thumbs.db
+# WordPress
+.htaccess
 
 # IDE
 .vscode/
 .idea/
-.claude/
+*.swp
+*.swo
+*~
 
-# WordPress
-wp-config.php
-wp-content/uploads/
-wp-content/upgrade/
-wp-content/backup-db/
-wp-content/backups/
-wp-content/cache/
-wp-content/advanced-cache.php
-wp-content/wp-cache-config.php
+# OS
+.DS_Store
+Thumbs.db
 
-# Node
+# Logs
+*.log
+
+# Node modules
 node_modules/
-npm-debug.log
+
+# Build artifacts
+/build/
+/dist/
 
 # Composer
-vendor/
-composer.lock
+/vendor/
 
-# Testing
-phpunit.xml
-.phpunit.result.cache
+# Temporary files
+*.tmp
+*.bak

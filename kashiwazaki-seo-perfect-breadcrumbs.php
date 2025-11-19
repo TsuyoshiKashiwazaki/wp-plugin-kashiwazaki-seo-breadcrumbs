@@ -3,7 +3,7 @@
  * Plugin Name: Kashiwazaki SEO Perfect Breadcrumbs
  * Plugin URI: https://www.tsuyoshikashiwazaki.jp
  * Description: 高度なSEO対策を実現する多機能パンくずリストプラグイン。URLステータスチェック機能により404エラーを自動回避し、常に最適なパンくずリストを生成。構造化データ対応、6種類のデザインパターン、自動挿入機能を搭載。サブディレクトリインストールにも完全対応。
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: 柏崎剛 (Tsuyoshi Kashiwazaki)
  * Author URI: https://www.tsuyoshikashiwazaki.jp/profile/
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 // プラグイン定数
 define('KSPB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('KSPB_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('KSPB_PLUGIN_VERSION', '1.0.2');
+define('KSPB_PLUGIN_VERSION', '1.0.3');
 define('KSPB_OPTION_NAME', 'kspb_options');
 define('KSPB_TEXT_DOMAIN', 'kashiwazaki-seo-perfect-breadcrumbs');
 
@@ -581,15 +581,24 @@ class KSPB_Breadcrumb_Builder {
         // 各セグメントを処理
         foreach ($segments as $index => $segment) {
             // URL構造に基づいてパスを構築
-            $accumulated_path = '/' . implode('/', array_slice($segments, 0, $index + 1));
+            $path_segments = array_slice($segments, 0, $index + 1);
+            // WordPress内部関数用のデコードされたパス
+            $accumulated_path = '/' . implode('/', $path_segments);
+            // URL構築用のエンコードされたパス
+            $encoded_segments = array_map('rawurlencode', $path_segments);
+            $encoded_path = '/' . implode('/', $encoded_segments);
             // ドメインルートからの完全なURLを生成
             $parsed_url = parse_url(home_url());
             $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'];
-            $url = $domain_root . $accumulated_path . '/';
-            
+            $url = $domain_root . $encoded_path . '/';
+            // パーセントエンコーディングを小文字に統一（%E3 → %e3）
+            $url = $this->lowercase_percent_encoding($url);
+
             // 最後のセグメントかつ現在のページの場合の特別処理
-            $is_current_page = ($index === count($segments) - 1) && 
-                               (rtrim($url, '/') === rtrim($current_url, '/'));
+            // URL比較時も小文字化して比較
+            $is_current_page = ($index === count($segments) - 1) &&
+                               (rtrim($url, '/') ===
+                                rtrim($this->lowercase_percent_encoding($current_url), '/'));
 
             // まずWordPress内部情報から取得を試みる
             $title = null;
@@ -607,8 +616,26 @@ class KSPB_Breadcrumb_Builder {
                     $title = get_the_title($page->ID);
                 }
             }
-            
-            // 3. カスタム投稿タイプアーカイブをチェック
+
+            // 3. 投稿（post）と全カスタム投稿タイプの個別記事をチェック
+            if (!$title) {
+                $post_types = get_post_types(['public' => true], 'names');
+                foreach ($post_types as $post_type) {
+                    $posts = get_posts([
+                        'name' => $segment,
+                        'post_type' => $post_type,
+                        'post_status' => 'publish',
+                        'numberposts' => 1
+                    ]);
+
+                    if (!empty($posts)) {
+                        $title = get_the_title($posts[0]->ID);
+                        break;
+                    }
+                }
+            }
+
+            // 4. カスタム投稿タイプアーカイブをチェック
             if (!$title) {
                 $post_types = get_post_types(['public' => true], 'objects');
                 foreach ($post_types as $post_type) {
@@ -682,6 +709,16 @@ class KSPB_Breadcrumb_Builder {
     }
 
     /**
+     * URLのパーセントエンコーディングを小文字に変換
+     * (%E3%81%82 → %e3%81%82)
+     */
+    private function lowercase_percent_encoding($url) {
+        return preg_replace_callback('/%[0-9A-F]{2}/', function($matches) {
+            return strtolower($matches[0]);
+        }, $url);
+    }
+
+    /**
      * URLセグメントを取得（完全なURLパスを保持）
      */
     private function get_url_segments() {
@@ -689,8 +726,9 @@ class KSPB_Breadcrumb_Builder {
         $request_uri = $_SERVER['REQUEST_URI'] ?? '';
         $url_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
 
-        // URLパスの全セグメントを取得
+        // URLパスの全セグメントを取得し、URLデコードを適用
         $segments = array_filter(explode('/', trim($url_path, '/')));
+        $segments = array_map('urldecode', $segments);
 
         return array_values($segments); // インデックスをリセット
     }
@@ -702,7 +740,8 @@ class KSPB_Breadcrumb_Builder {
         $request_uri = $_SERVER['REQUEST_URI'] ?? '';
         $url_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
 
-        return array_filter(explode('/', trim($url_path, '/')));
+        $segments = array_filter(explode('/', trim($url_path, '/')));
+        return array_map('urldecode', $segments);
     }
 
     /**

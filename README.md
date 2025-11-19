@@ -3,7 +3,7 @@
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/License-GPL--2.0--or--later-green.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
-[![Version](https://img.shields.io/badge/Version-1.0.2--dev-orange.svg)](https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases)
+[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases)
 
 革新的なURL構造解析でパンくずを自動生成！WordPressの階層に依存せず、実際のURL構造から正確な階層を構築する次世代パンくずリストプラグイン。
 
@@ -123,6 +123,12 @@ if (function_exists('kspb_display_breadcrumbs')) {
 - Edge（最新版）
 
 ## 更新履歴
+
+### [1.0.3] - 2025-11-19
+- **修正**: 日本語パーマリンク（マルチバイト文字URL）で404エラーが発生する問題を修正
+- **修正**: URLエンコーディングの大文字小文字を統一（%E3 → %e3）してリンク不一致を解消
+- **改善**: 投稿（post）とカスタム投稿タイプの個別記事タイトル取得処理を追加
+- **改善**: URLセグメントのデコード処理を実装してWordPress内部検索を最適化
 
 ### Version 1.0.2 (2025-11-02)
 - アーカイブページ表示制御機能を追加
