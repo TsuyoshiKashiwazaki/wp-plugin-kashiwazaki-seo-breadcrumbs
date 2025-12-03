@@ -5,6 +5,12 @@ All notable changes to Kashiwazaki SEO Perfect Breadcrumbs will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-12-04
+
+### Fixed
+- タグアーカイブ（/tag/）などでパンくずが正しく生成されない問題を修正
+- WordPressの状態関数（is_home等）に依存せず、純粋にURL構造からパンくずを生成するよう改善
+
 ## [1.0.3] - 2025-11-19
 
 ### Fixed

@@ -3,7 +3,7 @@
  * Plugin Name: Kashiwazaki SEO Perfect Breadcrumbs
  * Plugin URI: https://www.tsuyoshikashiwazaki.jp
  * Description: 高度なSEO対策を実現する多機能パンくずリストプラグイン。URLステータスチェック機能により404エラーを自動回避し、常に最適なパンくずリストを生成。構造化データ対応、6種類のデザインパターン、自動挿入機能を搭載。サブディレクトリインストールにも完全対応。
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: 柏崎剛 (Tsuyoshi Kashiwazaki)
  * Author URI: https://www.tsuyoshikashiwazaki.jp/profile/
  * License: GPL v2 or later
@@ -497,16 +497,6 @@ class KSPB_Breadcrumb_Builder {
      * パンくずリストを構築
      */
     public function build($options) {
-
-        // WordPressがサブディレクトリにインストールされているかチェック
-        $wp_path = parse_url(home_url(), PHP_URL_PATH) ?? '';
-        $has_subdirectory = !empty($wp_path) && $wp_path !== '/';
-
-        // ホームページの場合でも、サブディレクトリインストールの場合はURL構造を解析
-        if ((is_front_page() || is_home()) && !$has_subdirectory) {
-            return $this->build_home_breadcrumbs($options);
-        }
-
         $breadcrumbs = [];
 
         // ホームを追加
@@ -514,7 +504,15 @@ class KSPB_Breadcrumb_Builder {
             $breadcrumbs[] = $this->create_home_item($options['home_text']);
         }
 
-        // すべてのページでURLパスから階層を構築
+        // URLセグメントを取得
+        $segments = $this->get_url_segments();
+
+        // セグメントがなければホームのみ
+        if (empty($segments)) {
+            return $breadcrumbs;
+        }
+
+        // URLパスから階層を構築
         $breadcrumbs = $this->build_from_url_path($breadcrumbs);
 
         // 最大深度を超えた場合は切り詰める
