@@ -112,6 +112,14 @@ class KSPB_Admin_Page {
             'type' => 'checkbox',
             'sanitize' => 'rest_sanitize_boolean'
         ],
+        'auth_username' => [
+            'type' => 'text',
+            'sanitize' => 'sanitize_text_field'
+        ],
+        'auth_password' => [
+            'type' => 'text',
+            'sanitize' => 'sanitize_text_field'
+        ],
     ];
     
     /**
@@ -563,8 +571,39 @@ class KSPB_Admin_Page {
                     ※ キャッシュは24時間保持されます。
                 </p>
                 
+                <fieldset style="margin-top: 15px; padding: 12px; border: 1px solid #ddd; background: #f9f9f9; border-radius: 4px;">
+                    <legend style="font-weight: bold; padding: 0 6px;">Basic認証設定</legend>
+                    <p class="description" style="margin-top: 0;">
+                        スクレイピング先がBasic認証で保護されている場合に設定してください。
+                    </p>
+                    <table style="border-collapse: separate; border-spacing: 0 6px;">
+                        <tr>
+                            <td><label for="auth_username">ユーザー名</label></td>
+                            <td>
+                                <input type="text"
+                                       name="auth_username"
+                                       id="auth_username"
+                                       value="<?php echo esc_attr($options['auth_username'] ?? ''); ?>"
+                                       class="regular-text"
+                                       autocomplete="off">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="auth_password">パスワード</label></td>
+                            <td>
+                                <input type="text"
+                                       name="auth_password"
+                                       id="auth_password"
+                                       value="<?php echo esc_attr($options['auth_password'] ?? ''); ?>"
+                                       class="regular-text"
+                                       autocomplete="off">
+                            </td>
+                        </tr>
+                    </table>
+                </fieldset>
+
                 <div style="margin-top: 10px;">
-                    <button type="submit" name="clear_cache" class="button" 
+                    <button type="submit" name="clear_cache" class="button"
                             onclick="return confirm('キャッシュをクリアしてもよろしいですか？');">
                         キャッシュをクリア
                     </button>

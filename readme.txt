@@ -3,7 +3,7 @@ Contributors: tsuyoshikashiwazaki
 Tags: breadcrumbs, seo, navigation, schema.org, structured data, パンくずリスト, 構造化データ
 Requires at least: 5.0
 Tested up to: 6.4
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -192,6 +192,11 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 
 == Changelog ==
 
+= 1.0.5 =
+* Basic認証環境でのURLスクレイピング対応を追加
+* 管理画面にBasic認証のユーザー名・パスワード設定欄を追加
+* スクレイピングのHTTPリクエストにAuthorizationヘッダーを付与する機能を実装
+
 = 1.0.2 =
 * アーカイブページ表示制御機能を追加
 * カスタム投稿タイプアーカイブの個別制御を追加
@@ -231,6 +236,9 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 * 日本語完全対応
 
 == Upgrade Notice ==
+
+= 1.0.5 =
+Basic認証環境でURLスクレイピングが動作するようになりました。管理画面からID/パスワードを設定できます。
 
 = 1.0.2 =
 アーカイブページの表示制御機能を追加。管理画面UIを大幅に改善し、「すべてのページで表示」のシンプルモードを実装しました。

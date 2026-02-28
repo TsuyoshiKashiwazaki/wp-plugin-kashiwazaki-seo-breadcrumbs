@@ -3,7 +3,7 @@
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/License-GPL--2.0--or--later-green.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
-[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases)
+[![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)](https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases)
 
 革新的なURL構造解析でパンくずを自動生成！WordPressの階層に依存せず、実際のURL構造から正確な階層を構築する次世代パンくずリストプラグイン。
 
@@ -123,41 +123,6 @@ if (function_exists('kspb_display_breadcrumbs')) {
 - Edge（最新版）
 
 ## 更新履歴
-
-### [1.0.3] - 2025-11-19
-- **修正**: 日本語パーマリンク（マルチバイト文字URL）で404エラーが発生する問題を修正
-- **修正**: URLエンコーディングの大文字小文字を統一（%E3 → %e3）してリンク不一致を解消
-- **改善**: 投稿（post）とカスタム投稿タイプの個別記事タイトル取得処理を追加
-- **改善**: URLセグメントのデコード処理を実装してWordPress内部検索を最適化
-
-### Version 1.0.2 (2025-11-02)
-- アーカイブページ表示制御機能を追加
-- カスタム投稿タイプアーカイブの個別制御を追加
-- 「すべてのページで表示」シンプルモードを追加（デフォルトON）
-- 詳細設定の折りたたみUIを追加
-- セクションごとの一括選択/解除ボタンを追加
-- グリッドレイアウトで管理画面を改善
-- カスタム投稿タイプアーカイブと個別投稿を分離
-- イレギュラーなカスタムアーカイブページ（poll/datasets等）に対応
-- 構造化データ出力に設定チェックを追加
-- ショートコード・テーマ関数に設定チェックを追加
-- 構造化データ出力をHTMLコメントで識別可能に
-
-### Version 1.0.1 (2025-10-23)
-- サブディレクトリインストール時のURL構造解析を修正
-- ホームURLがドメインルートを正しく指すように修正
-- WordPressインストールディレクトリもパンくず階層に含めるよう改善
-- URL構造の完全な解析により正確な階層表示を実現
-
-### Version 1.0.0 (2025-09-21)
-- 初回リリース
-- 革新的なURL構造ベースの階層解析エンジン実装
-- 404エラー自動回避機能
-- Schema.org構造化データ対応
-- 3種類のデザインパターン
-- 24時間キャッシュ機能
-- サブディレクトリインストール完全対応
-- 制作者クレジット機能追加（SoftwareApplication構造化データ）
 
 詳細は[CHANGELOG.md](CHANGELOG.md)をご覧ください。
 

@@ -3,7 +3,7 @@
  * Plugin Name: Kashiwazaki SEO Perfect Breadcrumbs
  * Plugin URI: https://www.tsuyoshikashiwazaki.jp
  * Description: 高度なSEO対策を実現する多機能パンくずリストプラグイン。URLステータスチェック機能により404エラーを自動回避し、常に最適なパンくずリストを生成。構造化データ対応、6種類のデザインパターン、自動挿入機能を搭載。サブディレクトリインストールにも完全対応。
- * Version: 1.0.4
+ * Version: 1.0.5
  * Author: 柏崎剛 (Tsuyoshi Kashiwazaki)
  * Author URI: https://www.tsuyoshikashiwazaki.jp/profile/
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 // プラグイン定数
 define('KSPB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('KSPB_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('KSPB_PLUGIN_VERSION', '1.0.3');
+define('KSPB_PLUGIN_VERSION', '1.0.5');
 define('KSPB_OPTION_NAME', 'kspb_options');
 define('KSPB_TEXT_DOMAIN', 'kashiwazaki-seo-perfect-breadcrumbs');
 
@@ -39,7 +39,9 @@ define('KSPB_DEFAULT_OPTIONS', [
     'show_on_tag' => true,
     'show_on_date' => true,
     'show_on_author' => true,
-    'show_on_home_posts' => true
+    'show_on_home_posts' => true,
+    'auth_username' => '',
+    'auth_password' => ''
 ]);
 
 /**
@@ -469,7 +471,7 @@ class KSPB_Breadcrumb_Builder {
         $enable_scraping = !empty($options['enable_scraping']);
 
         if ($enable_scraping) {
-            $scraper = new KSPB_URL_Scraper();
+            $scraper = new KSPB_URL_Scraper($options);
             $status_data = $scraper->check_url_status($url);
             $status = is_array($status_data) ? $status_data['status'] : $status_data;
 
@@ -571,7 +573,8 @@ class KSPB_Breadcrumb_Builder {
         }
 
         // スクレイパーを初期化（タイトル取得は常に必要）
-        $scraper = new KSPB_URL_Scraper();
+        $options = $this->get_options();
+        $scraper = new KSPB_URL_Scraper($options);
         
         // 現在のページのURLを取得
         $current_url = home_url($_SERVER['REQUEST_URI'] ?? '');
@@ -775,8 +778,8 @@ class KSPB_Breadcrumb_Builder {
                 
                 $parsed_url = parse_url(home_url());
                 $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'];
-                $scraper = $enable_scraping ? new KSPB_URL_Scraper() : null;
-                
+                $scraper = $enable_scraping ? new KSPB_URL_Scraper($options) : null;
+
                 // 各階層を追加（スクレイピング機能でタイトル取得）
                 foreach ($path_segments as $index => $segment) {
                     $accumulated_path = '/' . implode('/', array_slice($path_segments, 0, $index + 1));
@@ -823,7 +826,7 @@ class KSPB_Breadcrumb_Builder {
                 // スクレイピング機能の設定を確認
                 $options = $this->get_options();
                 $enable_scraping = !empty($options['enable_scraping']);
-                $scraper = $enable_scraping ? new KSPB_URL_Scraper() : null;
+                $scraper = $enable_scraping ? new KSPB_URL_Scraper($options) : null;
 
                 foreach ($parent_slugs as $parent_slug) {
                     if (empty($parent_slug)) continue;
@@ -1406,6 +1409,24 @@ class KSPB_URL_Scraper {
     private $visited_urls = [];
 
     /**
+     * Basic認証ヘッダー
+     */
+    private $auth_headers = [];
+
+    /**
+     * コンストラクタ
+     */
+    public function __construct($options = []) {
+        $username = $options['auth_username'] ?? '';
+        $password = $options['auth_password'] ?? '';
+        if ($username !== '' && $password !== '') {
+            $this->auth_headers = [
+                'Authorization' => 'Basic ' . base64_encode($username . ':' . $password)
+            ];
+        }
+    }
+
+    /**
      * URLのステータスコードをチェック（リダイレクト先も含む）
      */
     public function check_url_status($url) {
@@ -1427,7 +1448,8 @@ class KSPB_URL_Scraper {
             'timeout' => self::TIMEOUT,
             'redirection' => 0,  // リダイレクトを追跡しない
             'user-agent' => 'KSPB Breadcrumbs Bot/1.0',
-            'sslverify' => false
+            'sslverify' => false,
+            'headers' => $this->auth_headers
         ]);
 
         if (is_wp_error($response)) {
@@ -1452,8 +1474,10 @@ class KSPB_URL_Scraper {
             'redirect_to' => $location
         ];
 
-        // キャッシュに保存
-        set_transient($cache_key, $result, self::CACHE_DURATION);
+        // 認証エラーはキャッシュしない（設定変更後に即反映させるため）
+        if ($status_code !== 401 && $status_code !== 403) {
+            set_transient($cache_key, $result, self::CACHE_DURATION);
+        }
 
         return $result;
     }
@@ -1482,7 +1506,8 @@ class KSPB_URL_Scraper {
             'timeout' => self::TIMEOUT,
             'redirection' => 3,
             'user-agent' => 'KSPB Breadcrumbs Bot/1.0',
-            'sslverify' => false // 開発環境対応
+            'sslverify' => false, // 開発環境対応
+            'headers' => $this->auth_headers
         ]);
 
         if (is_wp_error($response)) {
