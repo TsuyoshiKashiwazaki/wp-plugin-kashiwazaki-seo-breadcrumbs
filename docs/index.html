@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>概要 - Kashiwazaki SEO Perfect Breadcrumbs マニュアル</title>
+    <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+<button class="hamburger-btn" aria-label="メニュー">&#9776;</button>
+
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <h2 style="color:#fff;">Perfect Breadcrumbs</h2>
+        <span class="version">v1.0.5</span>
+        <img src="images/main-visual.png" alt="" style="width:100%;border-radius:4px;margin-top:8px;">
+    </div>
+    <ul>
+        <li class="active"><a href="index.html">概要</a></li>
+        <li><a href="setup.html">インストール・初期設定</a></li>
+        <li><a href="breadcrumbs-settings.html">詳細設定</a></li>
+        <li><a href="troubleshooting.html">トラブルシューティング</a></li>
+    </ul>
+</nav>
+
+<main class="content">
+    <h1>Kashiwazaki SEO Perfect Breadcrumbs マニュアル</h1>
+    <img src="images/main-visual.png" alt="Kashiwazaki SEO Perfect Breadcrumbs メインビジュアル" style="width:100%;border-radius:6px;margin-bottom:16px;">
+    <p class="lead">Kashiwazaki SEO Perfect Breadcrumbs は、WordPressサイトに構造化データ対応のパンくずナビゲーションを自動挿入するSEOプラグインです。6種類のデザインパターン、JSON-LD出力、URL自動補正など、パンくずに必要な機能をオールインワンで提供します。</p>
+
+    <p>パンくずナビゲーションは、ユーザーがサイト内の現在位置を把握し、上位ページに簡単に戻れるようにする重要なUI要素です。本プラグインは視覚的なパンくず表示に加え、BreadcrumbList構造化データの自動出力により、検索エンジンにもサイト階層を正確に伝えます。</p>
+
+    <h2>主な機能</h2>
+
+    <div class="feature-cards">
+        <div class="feature-card">
+            <span class="icon">&#128279;</span>
+            <h4>パンくず表示</h4>
+            <p>6種類のデザインパターンで記事にパンくずナビゲーションを自動挿入</p>
+        </div>
+        <div class="feature-card">
+            <span class="icon">&#128202;</span>
+            <h4>JSON-LD出力</h4>
+            <p>BreadcrumbListスキーマを自動生成し検索エンジンにサイト構造を伝達</p>
+        </div>
+        <div class="feature-card">
+            <span class="icon">&#128260;</span>
+            <h4>URL自動補正</h4>
+            <p>404エラーや301リダイレクトを検出し代替URLを自動提案</p>
+        </div>
+    </div>
+
+    <h2>プラグインの特長</h2>
+
+    <ul>
+        <li>6種類のデザインパターン（クラシック、モダン、ラウンドなど）から選択可能</li>
+        <li>BreadcrumbList JSON-LD構造化データを<code>&lt;head&gt;</code>内に自動出力</li>
+        <li>URLステータス検出による自動補正（404 / 301 / 302対応）</li>
+        <li>27種類の表示位置オプション、ショートコード <code>[kspb_breadcrumbs]</code> 対応</li>
+        <li>外部リンクタイトルのURLスクレイピング（Basic認証対応）</li>
+        <li>Transientキャッシュ（24時間）によるURL検査の効率化</li>
+        <li>フロントエンド: CSSのみ（7KB）、JavaScriptなし</li>
+        <li>フォントサイズ 10〜24px の範囲で調整可能</li>
+    </ul>
+
+    <figure class="infographic">
+        <img src="images/infographics/overview-flow.png" alt="プラグイン概要フロー図">
+        <figcaption>Kashiwazaki SEO Perfect Breadcrumbs の全体フロー</figcaption>
+    </figure>
+
+    <h2>SEO・GEO（生成AI最適化）への効果</h2>
+
+    <h3>構造化データによる検索エンジン最適化</h3>
+    <p>本プラグインは BreadcrumbList スキーマの JSON-LD を自動出力します。BreadcrumbList構造化データにより、検索エンジンがサイト階層構造を正確に把握できるようになり、検索結果（SERPs）にリッチなパンくず表示が実現されます。</p>
+
+    <h3>クロールバジェットの保護</h3>
+    <p>URLステータス検出機能により、404エラーや301リダイレクトを自動検知し、壊れたパンくずリンクを未然に防ぎます。壊れたリンクは検索エンジンのクロールバジェットを浪費するため、この機能はサイト全体のSEOパフォーマンス向上に貢献します。</p>
+
+    <h3>Core Web Vitals への影響ゼロ</h3>
+    <p>フロントエンドはCSS（7KB）のみで動作し、JavaScriptを一切使用しません。そのため、Largest Contentful Paint（LCP）やInteraction to Next Paint（INP）などのCore Web Vitals指標に悪影響を与えることがありません。</p>
+
+    <h3>生成AI（GEO）への対応</h3>
+    <p>構造化されたパンくずデータは、AIがページのサイト階層内での位置づけを正確に理解するのに役立ちます。BreadcrumbListスキーマによって、ページ間の親子関係やカテゴリ構造が機械可読な形式で提供されるため、AI検索エンジンやLLMベースのシステムがコンテンツのコンテキストをより正確に把握できるようになります。</p>
+
+    <h2>目次（マニュアル構成）</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:35%;">ページ</th>
+                <th>内容</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="index.html">概要</a></td>
+                <td>プラグインの機能概要、SEO/GEO効果、動作要件</td>
+            </tr>
+            <tr>
+                <td><a href="setup.html">インストール・初期設定</a></td>
+                <td>インストール手順、デザインパターン・フォントサイズ・表示位置などの基本設定</td>
+            </tr>
+            <tr>
+                <td><a href="breadcrumbs-settings.html">詳細設定</a></td>
+                <td>URLスクレイピング、ショートコード、自動挿入位置の詳細設定</td>
+            </tr>
+            <tr>
+                <td><a href="troubleshooting.html">トラブルシューティング</a></td>
+                <td>よくある問題と対処法、動作要件、技術仕様、アーキテクチャ</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>動作要件</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:35%;">項目</th>
+                <th>要件</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>WordPress</td>
+                <td>5.0 以上</td>
+            </tr>
+            <tr>
+                <td>PHP</td>
+                <td>7.4 以上</td>
+            </tr>
+            <tr>
+                <td>対応ブラウザ</td>
+                <td>Chrome、Firefox、Safari、Edge（最新版）</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout callout-tip">
+        <div class="callout-title">ヒント</div>
+        <p>インストール後すぐに使い始めたい場合は、<a href="setup.html">インストール・初期設定</a>ページに進んでください。</p>
+    </div>
+
+    <nav class="page-nav">
+        <span></span>
+        <a href="setup.html" class="next">インストール・初期設定 &raquo;</a>
+    </nav>
+
+    <footer class="manual-footer">
+        <p>作者: <a href="https://www.tsuyoshikashiwazaki.jp/profile/" target="_blank" rel="noopener">柏崎剛（Tsuyoshi Kashiwazaki）</a></p>
+        <p>プラグイン: Kashiwazaki SEO Perfect Breadcrumbs v1.0.5</p>
+    </footer>
+</main>
+
+<div class="lightbox"></div>
+<script src="js/manual.js?v=1"></script>
+</body>
+</html>

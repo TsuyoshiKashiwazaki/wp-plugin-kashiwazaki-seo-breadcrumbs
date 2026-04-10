@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>詳細設定 - Kashiwazaki SEO Perfect Breadcrumbs マニュアル</title>
+    <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+<button class="hamburger-btn" aria-label="メニュー">&#9776;</button>
+
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <h2 style="color:#fff;">Perfect Breadcrumbs</h2>
+        <span class="version">v1.0.5</span>
+        <img src="images/main-visual.png" alt="" style="width:100%;border-radius:4px;margin-top:8px;">
+    </div>
+    <ul>
+        <li><a href="index.html">概要</a></li>
+        <li><a href="setup.html">インストール・初期設定</a></li>
+        <li class="active"><a href="breadcrumbs-settings.html">詳細設定</a></li>
+        <li><a href="troubleshooting.html">トラブルシューティング</a></li>
+    </ul>
+</nav>
+
+<main class="content">
+    <h1>詳細設定</h1>
+    <p class="lead">URLスクレイピング、ショートコード、自動挿入位置など、Kashiwazaki SEO Perfect Breadcrumbs の詳細な設定項目を解説します。</p>
+
+    <h2>URLスクレイピング機能</h2>
+
+    <p>本プラグインは、パンくず内の外部リンクに対して自動的にURLスクレイピングを行い、リンク先ページのタイトルを取得します。これにより、外部リンクのパンくず項目にも適切な名前が表示されます。</p>
+
+    <figure class="screenshot">
+        <img src="images/screenshots/02-breadcrumbs-detail.png" alt="パンくず設定の詳細" class="lightbox-trigger">
+        <figcaption>パンくず設定画面の詳細オプション</figcaption>
+    </figure>
+
+    <h3>フロントエンド表示例</h3>
+    <figure class="screenshot">
+        <img src="images/screenshots/03-frontend-breadcrumbs.png" alt="パンくずナビゲーションの表示例" class="lightbox-trigger">
+        <figcaption>投稿ページ上部に表示されたパンくずナビゲーション</figcaption>
+    </figure>
+
+    <h3>仕組み</h3>
+
+    <div class="step">
+        <span class="step-number">1</span>
+        <div class="step-body">
+            <p>パンくず内に外部URLが含まれている場合、プラグインは <code>wp_remote_head</code> でURLのステータスコードを確認します。</p>
+        </div>
+    </div>
+
+    <div class="step">
+        <span class="step-number">2</span>
+        <div class="step-body">
+            <p>ステータスが正常（200）であれば、<code>wp_remote_get</code> でページのHTMLを取得し、<code>&lt;title&gt;</code> タグからページタイトルを抽出します。</p>
+        </div>
+    </div>
+
+    <div class="step">
+        <span class="step-number">3</span>
+        <div class="step-body">
+            <p>取得した結果はTransientキャッシュ（24時間）に保存され、次回以降のアクセスではキャッシュからデータを返します。</p>
+        </div>
+    </div>
+
+    <div class="callout callout-note">
+        <div class="callout-title">補足</div>
+        <p>スクレイピング時のUser-Agentは <code>KSPB Breadcrumbs Bot/1.0</code> で、タイムアウトは5秒に設定されています。サーバー負荷を最小限に抑えるよう設計されています。</p>
+    </div>
+
+    <h3>URLステータス検出と自動補正</h3>
+
+    <p>プラグインはURLのHTTPステータスコードを検出し、問題のあるリンクに対して自動的に対応します。</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:35%;">ステータスコード</th>
+                <th>プラグインの動作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="http-2xx">200 OK</span></td>
+                <td>正常なリンクとしてそのまま表示します。</td>
+            </tr>
+            <tr>
+                <td><span class="http-3xx">301 Moved Permanently</span></td>
+                <td>リダイレクト先のURLを検出し、代替URLとして自動提案します。</td>
+            </tr>
+            <tr>
+                <td><span class="http-3xx">302 Found</span></td>
+                <td>一時的なリダイレクトを検出し、リダイレクト先を代替URLとして提案します。</td>
+            </tr>
+            <tr>
+                <td><span class="http-4xx">404 Not Found</span></td>
+                <td>リンク切れを検出し、管理者に通知します。代替URLの手動設定が可能です。</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout callout-warning">
+        <div class="callout-title">注意</div>
+        <p>URLスクレイピングは外部サーバーへのHTTPリクエストを伴います。大量の外部リンクがある場合、Transientキャッシュが切れた際に一時的にページ生成が遅くなる可能性があります。</p>
+    </div>
+
+    <h3>Basic認証対応</h3>
+    <p>Basic認証が必要なURLに対しても、ユーザー名とパスワードを設定画面から登録することでスクレイピングが可能です。認証情報は暗号化して保存されます。</p>
+
+    <h2>ショートコードの使い方</h2>
+
+    <p>パンくずナビゲーションを任意の場所に手動で挿入するには、ショートコード <code>[kspb_breadcrumbs]</code> を使用します。</p>
+
+    <h3>基本的な使い方</h3>
+    <p>投稿や固定ページの本文エディタ内で、パンくずを表示したい位置に以下を記述します。</p>
+
+    <pre><code>[kspb_breadcrumbs]</code></pre>
+
+    <div class="callout callout-tip">
+        <div class="callout-title">ヒント</div>
+        <p>ショートコードはウィジェットエリアやテンプレートファイル内でも使用可能です。テンプレートファイルで使う場合は <code>&lt;?php echo do_shortcode('[kspb_breadcrumbs]'); ?&gt;</code> と記述してください。</p>
+    </div>
+
+    <h3>自動挿入との併用</h3>
+    <p>自動挿入とショートコードを同時に使用すると、パンくずが二重に表示される場合があります。ショートコードを使用する場合は、設定画面で自動挿入を「無効」に設定することを推奨します。</p>
+
+    <h2>自動挿入位置の詳細</h2>
+
+    <p>自動挿入位置は、WordPressのアクションフックを利用してパンくずを挿入します。27種類のフックポジションが用意されており、テーマの構造に合わせて最適な位置を選択できます。</p>
+
+    <h3>主なフックポジション</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:35%;">フック名</th>
+                <th>挿入位置の説明</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>wp_body_open</td>
+                <td><code>&lt;body&gt;</code> タグ直後。ページ最上部に表示されます。</td>
+            </tr>
+            <tr>
+                <td>the_content（前）</td>
+                <td>記事本文の直前に挿入されます。</td>
+            </tr>
+            <tr>
+                <td>the_content（後）</td>
+                <td>記事本文の直後に挿入されます。</td>
+            </tr>
+            <tr>
+                <td>loop_start</td>
+                <td>メインループの開始時に表示されます。</td>
+            </tr>
+            <tr>
+                <td>wp_footer</td>
+                <td>ページフッター領域に表示されます。</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout callout-note">
+        <div class="callout-title">補足</div>
+        <p>使用中のテーマがすべてのフックに対応しているとは限りません。パンくずが期待どおりの位置に表示されない場合は、別のフックポジションを試してください。</p>
+    </div>
+
+    <h3>表示対象の投稿タイプ</h3>
+    <p>パンくずの自動挿入は、以下の投稿タイプで有効です。</p>
+    <ul>
+        <li>投稿（post）</li>
+        <li>固定ページ（page）</li>
+        <li>カスタム投稿タイプ</li>
+        <li>カテゴリ・タグアーカイブ</li>
+        <li>日付アーカイブ</li>
+        <li>著者アーカイブ</li>
+        <li>検索結果ページ</li>
+        <li>404ページ</li>
+    </ul>
+
+    <div class="callout callout-tip">
+        <div class="callout-title">ヒント</div>
+        <p>トップページ（フロントページ）ではパンくずは自動的に非表示になります。これは、トップページがパンくずの起点（ホーム）であるためです。</p>
+    </div>
+
+    <h2>キャッシュ管理</h2>
+
+    <p>URLスクレイピングの結果はWordPressのTransient APIを使用して24時間キャッシュされます。キャッシュにより、同じURLへの重複リクエストを防ぎ、ページ表示速度を維持します。</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:35%;">項目</th>
+                <th>詳細</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>キャッシュ方式</td>
+                <td>WordPress Transient API</td>
+            </tr>
+            <tr>
+                <td>有効期間</td>
+                <td>24時間（自動更新）</td>
+            </tr>
+            <tr>
+                <td>保存先</td>
+                <td>wp_options テーブル（オブジェクトキャッシュ利用時はメモリ）</td>
+            </tr>
+            <tr>
+                <td>手動クリア</td>
+                <td>設定画面の「キャッシュクリア」ボタンで即座に削除可能</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <nav class="page-nav">
+        <a href="setup.html" class="prev">&laquo; インストール・初期設定</a>
+        <a href="troubleshooting.html" class="next">トラブルシューティング &raquo;</a>
+    </nav>
+
+    <footer class="manual-footer">
+        <p>作者: <a href="https://www.tsuyoshikashiwazaki.jp/profile/" target="_blank" rel="noopener">柏崎剛（Tsuyoshi Kashiwazaki）</a></p>
+        <p>プラグイン: Kashiwazaki SEO Perfect Breadcrumbs v1.0.5</p>
+    </footer>
+</main>
+
+<div class="lightbox"></div>
+<script src="js/manual.js?v=1"></script>
+</body>
+</html>

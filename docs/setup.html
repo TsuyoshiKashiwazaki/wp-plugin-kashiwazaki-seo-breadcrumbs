@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>インストール・初期設定 - Kashiwazaki SEO Perfect Breadcrumbs マニュアル</title>
+    <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+<button class="hamburger-btn" aria-label="メニュー">&#9776;</button>
+
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <h2 style="color:#fff;">Perfect Breadcrumbs</h2>
+        <span class="version">v1.0.5</span>
+        <img src="images/main-visual.png" alt="" style="width:100%;border-radius:4px;margin-top:8px;">
+    </div>
+    <ul>
+        <li><a href="index.html">概要</a></li>
+        <li class="active"><a href="setup.html">インストール・初期設定</a></li>
+        <li><a href="breadcrumbs-settings.html">詳細設定</a></li>
+        <li><a href="troubleshooting.html">トラブルシューティング</a></li>
+    </ul>
+</nav>
+
+<main class="content">
+    <h1>インストール・初期設定</h1>
+    <p class="lead">Kashiwazaki SEO Perfect Breadcrumbs のインストール方法と、パンくず表示に必要な基本設定を説明します。</p>
+
+    <h2>インストール手順</h2>
+
+    <div class="step">
+        <span class="step-number">1</span>
+        <div class="step-body">
+            <p>WordPress管理画面から <strong>プラグイン &gt; 新規追加</strong> に移動し、「Kashiwazaki SEO Perfect Breadcrumbs」を検索します。または、プラグインのZIPファイルを <strong>プラグイン &gt; 新規追加 &gt; プラグインのアップロード</strong> からアップロードします。</p>
+        </div>
+    </div>
+
+    <div class="step">
+        <span class="step-number">2</span>
+        <div class="step-body">
+            <p>「今すぐインストール」をクリックし、インストール完了後「有効化」をクリックします。</p>
+        </div>
+    </div>
+
+    <div class="step">
+        <span class="step-number">3</span>
+        <div class="step-body">
+            <p>管理画面の左メニューに「Perfect Breadcrumbs」が追加されます。クリックして設定画面を開きます。</p>
+        </div>
+    </div>
+
+    <figure class="screenshot">
+        <img src="images/screenshots/00-menu-location.png" alt="管理画面メニューの位置" class="lightbox-trigger">
+        <figcaption>管理画面の左メニューにプラグインが追加されます</figcaption>
+    </figure>
+
+    <div class="callout callout-tip">
+        <div class="callout-title">ヒント</div>
+        <p>有効化直後から、デフォルト設定でパンくずナビゲーションが表示されます。必要に応じて以下の設定を調整してください。</p>
+    </div>
+
+    <h2>基本設定</h2>
+
+    <h3>デザインパターン</h3>
+    <p>6種類のデザインパターンから、サイトのテーマに合ったスタイルを選択できます。</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:35%;">パターン名</th>
+                <th>説明</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>クラシック</td>
+                <td>シンプルなテキストベースのパンくず。多くのテーマと調和します。</td>
+            </tr>
+            <tr>
+                <td>モダン</td>
+                <td>洗練されたフラットデザイン。現代的なサイトに最適です。</td>
+            </tr>
+            <tr>
+                <td>ラウンド</td>
+                <td>丸みを帯びた角のデザイン。柔らかい印象を与えます。</td>
+            </tr>
+            <tr>
+                <td>アロー</td>
+                <td>矢印型の区切りを使用したナビゲーションスタイル。</td>
+            </tr>
+            <tr>
+                <td>アンダーライン</td>
+                <td>下線でリンクを強調するミニマルなデザイン。</td>
+            </tr>
+            <tr>
+                <td>ボックス</td>
+                <td>各項目をボックスで囲んだ視認性の高いデザイン。</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout callout-note">
+        <div class="callout-title">補足</div>
+        <p>デザインパターンはフロントエンドのCSSのみ（7KB）で実装されており、JavaScriptは使用しません。Core Web Vitalsに影響を与えません。</p>
+    </div>
+
+    <h3>フォントサイズ</h3>
+    <p>パンくずナビゲーションのフォントサイズを <strong>10px〜24px</strong> の範囲で設定できます。デフォルトは14pxです。テーマの本文テキストと調和するサイズを選んでください。</p>
+
+    <h3>表示位置</h3>
+    <p>パンくずの表示位置を27種類のフックポジションから選択できます。代表的な位置は以下のとおりです。</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:35%;">表示位置</th>
+                <th>説明</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>記事タイトルの上</td>
+                <td>投稿・固定ページのタイトル直前に表示します。最も一般的な配置です。</td>
+            </tr>
+            <tr>
+                <td>記事タイトルの下</td>
+                <td>タイトルとコンテンツの間に表示します。</td>
+            </tr>
+            <tr>
+                <td>コンテンツの前</td>
+                <td>記事本文の直前に表示します。</td>
+            </tr>
+            <tr>
+                <td>コンテンツの後</td>
+                <td>記事本文の直後に表示します。</td>
+            </tr>
+            <tr>
+                <td>手動（ショートコード）</td>
+                <td><code>[kspb_breadcrumbs]</code> で任意の場所に挿入します。</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout callout-warning">
+        <div class="callout-title">注意</div>
+        <p>テーマによっては一部のフックポジションが利用できない場合があります。パンくずが表示されない場合は、別の表示位置を試すか、ショートコードをご利用ください。</p>
+    </div>
+
+    <h3>ホームテキスト</h3>
+    <p>パンくずの先頭に表示されるホームページへのリンクテキストを設定します。デフォルトは「ホーム」です。サイト名やアイコンに変更することもできます。</p>
+
+    <h3>区切り文字（セパレーター）</h3>
+    <p>パンくず項目間の区切り文字を設定します。一般的な区切り文字は以下のとおりです。</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:35%;">区切り文字</th>
+                <th>表示例</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>&gt;</td>
+                <td>ホーム &gt; カテゴリ &gt; 記事タイトル</td>
+            </tr>
+            <tr>
+                <td>/</td>
+                <td>ホーム / カテゴリ / 記事タイトル</td>
+            </tr>
+            <tr>
+                <td>&raquo;</td>
+                <td>ホーム &raquo; カテゴリ &raquo; 記事タイトル</td>
+            </tr>
+            <tr>
+                <td>&#8250;</td>
+                <td>ホーム &#8250; カテゴリ &#8250; 記事タイトル</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>JSON-LD構造化データ</h2>
+    <p>本プラグインは BreadcrumbList スキーマの JSON-LD を <code>&lt;head&gt;</code> 内に自動出力します。この設定はデフォルトで有効になっており、特別な設定は不要です。</p>
+
+    <p>出力される JSON-LD の例:</p>
+    <pre><code>{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "ホーム",
+      "item": "https://example.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "カテゴリ",
+      "item": "https://example.com/category/"
+    }
+  ]
+}</code></pre>
+
+    <div class="callout callout-tip">
+        <div class="callout-title">ヒント</div>
+        <p>JSON-LDの出力は <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">Googleリッチリザルトテスト</a> で確認できます。</p>
+    </div>
+
+    <nav class="page-nav">
+        <a href="index.html" class="prev">&laquo; 概要</a>
+        <a href="breadcrumbs-settings.html" class="next">詳細設定 &raquo;</a>
+    </nav>
+
+    <footer class="manual-footer">
+        <p>作者: <a href="https://www.tsuyoshikashiwazaki.jp/profile/" target="_blank" rel="noopener">柏崎剛（Tsuyoshi Kashiwazaki）</a></p>
+        <p>プラグイン: Kashiwazaki SEO Perfect Breadcrumbs v1.0.5</p>
+    </footer>
+</main>
+
+<div class="lightbox"></div>
+<script src="js/manual.js?v=1"></script>
+</body>
+</html>
