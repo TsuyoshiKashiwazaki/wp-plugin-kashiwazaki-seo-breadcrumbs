@@ -3,7 +3,7 @@ Contributors: tsuyoshikashiwazaki
 Tags: breadcrumbs, seo, navigation, schema.org, structured data, パンくずリスト, 構造化データ
 Requires at least: 5.0
 Tested up to: 6.4
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -35,7 +35,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 **2. 高度なエラー処理**
 * 404エラーを自動検出して代替URLを使用
-* 301/302リダイレクトを自動追跡
+* 301/302 リダイレクトの検出（同一ドメインのみ代替URL候補として扱う）
 * 存在しないページは自動的にスキップ
 
 **3. 完全なSEO対応**
@@ -192,6 +192,19 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 
 == Changelog ==
 
+= 1.0.6 =
+* Security: Basic認証パスワードを sodium_crypto_secretbox で暗号化保存（sodium 不在環境では平文保存、1.0.5 以前からのアップグレード時は自動移行）
+* Security: 外部URLタイトル取得時のリダイレクト自動追跡を停止（SSRF 対策）
+* Security: transient キャッシュキーに認証状態 HMAC を組み込み、認証情報変更で自動無効化
+* Security: sslverify は WP_DEBUG=false でデフォルト有効、true でデフォルト無効（`kspb_sslverify` フィルタで上書き可）
+* Fixed: キャッシュクリアボタンで wp_options テーブルの transient が消えなかった問題を修正
+* Fixed: uninstall 時のオプション / transient 残留（マルチサイト全サイト対応）を修正
+* Fixed: 管理画面・フィード・REST・AJAX で `the_content` 経由パンくずが暴発する問題を修正
+* Fixed: `$_POST` の wp_unslash 適用箇所を WordPress 規約通りに整理 / parse_url null 戻り / 無制限スクレイピングを修正
+* Changed: post_types ホワイトリスト検証、font_size サーバー側 clamp、capability 明示チェックなど防御強化
+* Changed: 管理画面 inline JS ハンドラを data 属性 + addEventListener 方式に変更（CSP 互換）
+* Removed: デッドコード約 563 行、未使用 `KSPB_URL_Scraper::MAX_DEPTH` 定数、Reflection 経由 private 呼出、`wp_cache_flush()` 全体フラッシュ
+
 = 1.0.5 =
 * Basic認証環境でのURLスクレイピング対応を追加
 * 管理画面にBasic認証のユーザー名・パスワード設定欄を追加
@@ -236,6 +249,9 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 * 日本語完全対応
 
 == Upgrade Notice ==
+
+= 1.0.6 =
+キャッシュクリア不具合修正と Basic認証パスワード暗号化などのセキュリティ強化を含む重要更新。既存設定は互換を維持。
 
 = 1.0.5 =
 Basic認証環境でURLスクレイピングが動作するようになりました。管理画面からID/パスワードを設定できます。

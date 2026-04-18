@@ -5,6 +5,37 @@ All notable changes to Kashiwazaki SEO Perfect Breadcrumbs will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-04-18
+
+### Security
+- Basic認証のパスワードを sodium_crypto_secretbox（wp_salt 派生鍵）で暗号化して保存。旧バージョンの平文保存値は初回読込時に暗号化形式へ自動移行（1.0.5 以前→1.0.6 のアップグレード経路のみ）。PHP sodium 拡張が利用できない環境では平文のまま保存される（将来 sodium 有効化後に新規入力値は暗号化対象）
+- 外部URLタイトル取得時に wp_remote_get のリダイレクト自動追跡を無効化（`redirection=0`）し、内部ネットワークへの意図しないアクセスを遮断（SSRF 対策）
+- transient キャッシュキーに認証状態の HMAC ハッシュ（wp_salt keyed）を組み込み、認証情報変更時に古いキャッシュを論理的に無効化
+- sslverify は WP_DEBUG=false 環境でデフォルト有効、WP_DEBUG=true 環境でデフォルト無効（開発環境の自己署名証明書対応）。任意環境から `kspb_sslverify` フィルタで上書き可能
+
+### Fixed
+- **キャッシュクリアボタンを押してもキャッシュが消えない問題を修正** — 旧実装はオブジェクトキャッシュのみをフラッシュしていたため、wp_options テーブルに保存された transient が残留していた。新実装ではバージョン番号による論理無効化と wp_options からの物理削除を併用
+- プラグイン削除（uninstall）時にオプションと transient が残留する問題を修正（マルチサイト環境では全サイトで cleanup を実行）
+- `the_content` フィルター経由でパンくずが管理画面・フィード・REST API・AJAX で意図せず挿入される問題を修正
+- `$_POST` データ処理における wp_unslash の適用箇所を整理し、WordPress 規約に沿った正しい位置で 1 回のみ適用するよう修正
+- `parse_url()` の戻り値が false / キー欠損の場合に PHP warning が出る問題を修正
+- 外部URLスクレイピングが無制限に行われる可能性を 3 層防御（階層の深さ制限・ネガティブキャッシュ・1 リクエストあたりの上限）で対策
+
+### Changed
+- 管理画面の設定ページに `current_user_can('manage_options')` の明示チェックを追加（多層防御）
+- 管理画面の JavaScript ハンドラーを inline `onclick=` / `onchange=` から data 属性 + addEventListener ベースに変更（CSP 互換性向上）
+- post_types 設定の検証にホワイトリスト方式（`get_post_types(['public' => true])`）を追加
+- Basic認証ユーザー名にコロン文字が含まれる場合のバリデーション処理を追加（RFC 7617 準拠）
+- フォントサイズ入力値のサーバー側クランプ処理を追加（min/max 範囲外の値を無害化）
+- 管理画面ファイルの読み込みを純粋なクラス定義のみに限定し、副作用を分離
+- 内部データスキーマバージョン管理のためのマイグレーション枠組みを整備
+
+### Removed
+- 使用されていないデッドコード約 563 行を削除（旧 breadcrumb builder の非推奨関数群）
+- `wp_cache_flush()` の全体キャッシュフラッシュ呼び出しを廃止（他プラグインへの副作用を防止）
+- Reflection API を使った private メソッド呼び出しを廃止（設計見直しで不要化）
+- URL スクレイパ内の未使用定数 `KSPB_URL_Scraper::MAX_DEPTH` を削除（階層制限は `KSPB_Breadcrumb_Builder::MAX_DEPTH` と per-request 上限で担保されている）
+
 ## [1.0.5] - 2026-02-28
 
 ### Added
@@ -104,6 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.0.6]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.6
 [1.0.5]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.5
 [1.0.4]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.4
 [1.0.3]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.3

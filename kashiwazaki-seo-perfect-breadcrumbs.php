@@ -3,7 +3,7 @@
  * Plugin Name: Kashiwazaki SEO Perfect Breadcrumbs
  * Plugin URI: https://www.tsuyoshikashiwazaki.jp
  * Description: 高度なSEO対策を実現する多機能パンくずリストプラグイン。URLステータスチェック機能により404エラーを自動回避し、常に最適なパンくずリストを生成。構造化データ対応、6種類のデザインパターン、自動挿入機能を搭載。サブディレクトリインストールにも完全対応。
- * Version: 1.0.5
+ * Version: 1.0.6
  * Author: 柏崎剛 (Tsuyoshi Kashiwazaki)
  * Author URI: https://www.tsuyoshikashiwazaki.jp/profile/
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 // プラグイン定数
 define('KSPB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('KSPB_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('KSPB_PLUGIN_VERSION', '1.0.5');
+define('KSPB_PLUGIN_VERSION', '1.0.6');
 define('KSPB_OPTION_NAME', 'kspb_options');
 define('KSPB_TEXT_DOMAIN', 'kashiwazaki-seo-perfect-breadcrumbs');
 
@@ -68,6 +68,15 @@ class KashiwazakiSeoPerfectBreadcrumbs {
      * レンダラー
      */
     private $renderer;
+
+    /**
+     * リクエスト内でキャッシュしたパンくず配列。
+     * auto_insert_breadcrumbs (the_content フィルタ) と add_structured_data (wp_head)
+     * の両方で generate_breadcrumbs() が呼ばれ、毎回 URL セグメント数 × 外部 HTTP が
+     * 走るのを避けるため、1 リクエスト内では結果を再利用する。
+     * null = 未計算、空配列 = 計算済みで breadcrumbs なし、他 = 計算済み。
+     */
+    private $cached_breadcrumbs = null;
 
     /**
      * シングルトンインスタンスを取得
@@ -133,6 +142,76 @@ class KashiwazakiSeoPerfectBreadcrumbs {
             // バージョンを更新
             update_option('kspb_version', '1.0.0');
         }
+
+        // 内部データスキーマバージョン '1.0.6' 以降: auth_password を暗号化保存に移行。
+        // ※ これは kspb_version (内部データバージョン、migration 追跡用) であって、
+        //   プラグイン公開バージョン KSPB_PLUGIN_VERSION (リリース時にユーザーが bump) とは別。
+        // 旧ユーザーが管理画面で再保存しなくても DB から平文が消えるようにする。
+        // sodium 不在や random_bytes 失敗時は encrypt() が平文を返し得るため、戻り値が
+        // 実際に暗号化された (enc: プレフィックス付き) かを検証してから version を bump する。
+        // 暗号化失敗時は version を据え置き、次回 init で再試行する。
+        if (version_compare($current_version, '1.0.6', '<')) {
+            $options = get_option(KSPB_OPTION_NAME, []);
+            $stored = $options['auth_password'] ?? '';
+            $prefix = KSPB_Crypto::PREFIX;
+            $prefix_len = strlen($prefix);
+
+            // プレフィックス検査だけでは、偶然 "enc:" で始まる平文 (例: 'enclosed') を
+            // 暗号化済みと誤判定する。一方で「format valid だが復号不能」なケース
+            // (鍵/salt 変更) は、元値を破壊せず残したほうが後で salt を戻して復旧できる。
+            // したがって format 検証で分岐する:
+            //   - format invalid (base64 壊れ / nonce+MAC 長さ不足) → 偶然衝突の平文とみなし migration
+            //   - format valid       → 暗号化値とみなし touch しない (復号成否は問わず DB 保持)
+            //   - プレフィックスなし → 旧平文 → migration
+            $needs_migration = false;
+            if ($stored !== '') {
+                if (strncmp($stored, $prefix, $prefix_len) !== 0) {
+                    $needs_migration = true;
+                } elseif (!KSPB_Crypto::is_valid_ciphertext_format($stored)) {
+                    $needs_migration = true;
+                }
+            }
+
+            if ($needs_migration) {
+                $encrypted = KSPB_Crypto::encrypt($stored);
+                // sodium 不在や random_bytes 失敗時に encrypt() は平文をそのまま返す。
+                // その場合に元の平文が偶然 enc: で始まっていると prefix マッチだけでは
+                // 暗号化成功と誤判定されるため、(a) 実際に format 検証を通過する暗号文で
+                // あること、(b) 元値と異なること、の両方を求める。
+                $really_encrypted = ($encrypted !== $stored)
+                    && KSPB_Crypto::is_valid_ciphertext_format($encrypted);
+                if ($really_encrypted) {
+                    $options['auth_password'] = $encrypted;
+                    update_option(KSPB_OPTION_NAME, $options);
+                    update_option('kspb_version', '1.0.6');
+                }
+                // 暗号化が平文のまま or format invalid なら version を上げず、次回 init で再試行
+            } else {
+                // プレフィックスなしの空値、または format valid な暗号文 (復号成否は問わず
+                // 現時点で触る必要がない) → 安全に version bump
+                update_option('kspb_version', '1.0.6');
+            }
+        }
+
+        // 新しい内部データスキーマバージョンを追加する場合、ここに version_compare
+        // ブロックを追記する (冪等、失敗時は version bump せず次回再試行):
+        //
+        //   if (version_compare($current_version, 'X.Y.Z', '<')) {
+        //       // X.Y.Z のマイグレーション処理
+        //       update_option('kspb_version', 'X.Y.Z');
+        //   }
+
+        // バージョン遷移と独立して、DEFAULT_OPTIONS に新規追加されたキーを既存レコードに
+        // 自動補完する。wp_parse_args は既存値を上書きせず、不足キーだけを default から
+        // 補うため冪等。新オプションを KSPB_DEFAULT_OPTIONS に追加した際、アップグレード
+        // ユーザーの DB レコードにも反映される。
+        $stored_options = get_option(KSPB_OPTION_NAME, []);
+        if (is_array($stored_options)) {
+            $merged = wp_parse_args($stored_options, KSPB_DEFAULT_OPTIONS);
+            if ($merged !== $stored_options) {
+                update_option(KSPB_OPTION_NAME, $merged);
+            }
+        }
     }
 
     /**
@@ -162,6 +241,7 @@ class KashiwazakiSeoPerfectBreadcrumbs {
      */
     public function admin_page() {
         require_once KSPB_PLUGIN_PATH . 'admin/admin-page.php';
+        KSPB_Admin_Page::render();
     }
 
     /**
@@ -196,12 +276,20 @@ class KashiwazakiSeoPerfectBreadcrumbs {
      * パンくずリストを生成
      */
     public function generate_breadcrumbs() {
+        // リクエスト内で既に計算済みならそれを返す (the_content と wp_head の二重呼出で
+        // 外部 HTTP が重複発生するのを防ぐ memo)。
+        if ($this->cached_breadcrumbs !== null) {
+            return $this->cached_breadcrumbs;
+        }
+
         // スクレイピングボットからのアクセスの場合は何も返さない（無限ループ防止）
         if (isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'KSPB Breadcrumbs Bot') !== false) {
-            return [];
+            $this->cached_breadcrumbs = [];
+            return $this->cached_breadcrumbs;
         }
-        
-        return $this->breadcrumb_builder->build($this->get_options());
+
+        $this->cached_breadcrumbs = $this->breadcrumb_builder->build($this->get_options());
+        return $this->cached_breadcrumbs;
     }
 
     /**
@@ -222,6 +310,18 @@ class KashiwazakiSeoPerfectBreadcrumbs {
      * コンテンツへの自動挿入
      */
     public function auto_insert_breadcrumbs($content) {
+        // the_content は wp_head / RSS フィード / REST API / get_the_content() の
+        // 入れ子呼び出し / 管理画面エディタプレビュー 等でも発火するため、
+        // フロント本文以外でパンくず HTML が混入しないようコンテキスト判定を先に行う。
+        if (is_admin()
+            || is_feed()
+            || (defined('REST_REQUEST') && REST_REQUEST)
+            || (defined('DOING_AJAX') && DOING_AJAX)
+            || !is_main_query()
+            || !in_the_loop()) {
+            return $content;
+        }
+
         $options = $this->get_options();
 
         if (!$this->should_display_breadcrumbs($options)) {
@@ -236,7 +336,7 @@ class KashiwazakiSeoPerfectBreadcrumbs {
         /**
      * パンくずリストを表示すべきか判定
      */
-    private function should_display_breadcrumbs($options) {
+    public function should_display_breadcrumbs($options) {
         // すべてのページで表示する設定の場合
         if (!empty($options['show_breadcrumbs_all'])) {
             return true;
@@ -463,37 +563,6 @@ class KSPB_Breadcrumb_Builder {
      */
     private const MAX_DEPTH = 10;
 
-        /**
-     * URLの301リダイレクトをチェックして適切なパンくず項目を作成（共通関数）
-     */
-    private function create_breadcrumb_item($title, $url, $position) {
-        $options = $this->get_options();
-        $enable_scraping = !empty($options['enable_scraping']);
-
-        if ($enable_scraping) {
-            $scraper = new KSPB_URL_Scraper($options);
-            $status_data = $scraper->check_url_status($url);
-            $status = is_array($status_data) ? $status_data['status'] : $status_data;
-
-            // リダイレクトの場合を最優先で処理
-            if (($status === 301 || $status === 302) && !empty($status_data['redirect_to'])) {
-                $url = $status_data['redirect_to'];
-            }
-
-            return [
-                'title' => $title,
-                'url' => $url,
-                'position' => $position,
-                'status' => $status
-            ];
-        } else {
-            return [
-                'title' => $title,
-                'url' => $url,
-                'position' => $position
-            ];
-        }
-    }
 
     /**
      * パンくずリストを構築
@@ -526,22 +595,25 @@ class KSPB_Breadcrumb_Builder {
     }
 
     /**
-     * ホームページのパンくずリストを構築
+     * オプションを取得（親クラスのメソッドを呼び出し）。
+     * build_from_url_path() が enable_scraping フラグ取得のために参照する。
      */
-    private function build_home_breadcrumbs($options) {
-        if (!empty($options['show_home'])) {
-            return [$this->create_home_item($options['home_text'])];
-        }
-        return [];
+    private function get_options() {
+        $instance = KashiwazakiSeoPerfectBreadcrumbs::get_instance();
+        return $instance->get_options();
     }
 
     /**
      * ホーム項目を作成
      */
     private function create_home_item($text) {
-        // ドメインルートをホームとする（WordPressインストールディレクトリを除外）
+        // ドメインルートをホームとする（WordPressインストールディレクトリを除外）。
+        // parse_url は filter 等で壊れた URL を渡すと false / 欠損キーを返し得るため、
+        // scheme/host は ?? で defensive に default 値を補う。
         $parsed_url = parse_url(home_url());
-        $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'] . '/';
+        $scheme = (is_array($parsed_url) ? ($parsed_url['scheme'] ?? 'https') : 'https');
+        $host = (is_array($parsed_url) ? ($parsed_url['host'] ?? '') : '');
+        $domain_root = $scheme . '://' . $host . '/';
 
         return [
             'title' => $text,
@@ -559,17 +631,29 @@ class KSPB_Breadcrumb_Builder {
             return $breadcrumbs;
         }
 
+        // 深度制限を前段で適用 (公開リクエストから深い URL を多段スクレイピングされると
+        // セグメント数 × wp_remote_get で自己 DoS を引き起こすため)。
+        // build() 末尾でも $breadcrumbs を切り詰めているが、ここで事前に segments を
+        // 絞ることで内部ループの外部 HTTP 回数自体を制限する。
+        if (count($segments) > self::MAX_DEPTH) {
+            $segments = array_slice($segments, 0, self::MAX_DEPTH);
+        }
+
         $position = count($breadcrumbs) + 1;
         $options = $this->get_options();
         $enable_scraping = !empty($options['enable_scraping']);
 
-        // ドメインルートを取得（サブディレクトリインストールを考慮）
+        // ドメインルートを取得（サブディレクトリインストールを考慮）。
+        // parse_url 失敗 / 欠損キーに備え ?? で default 値を補う。
         $parsed_url = parse_url(home_url());
-        $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'];
+        $scheme = (is_array($parsed_url) ? ($parsed_url['scheme'] ?? 'https') : 'https');
+        $host = (is_array($parsed_url) ? ($parsed_url['host'] ?? '') : '');
+        $install_path = (is_array($parsed_url) ? ($parsed_url['path'] ?? '') : '');
+        $domain_root = $scheme . '://' . $host;
 
         // WordPressがサブディレクトリにインストールされている場合はそのパスも含める
-        if (!empty($parsed_url['path']) && $parsed_url['path'] !== '/') {
-            $domain_root .= rtrim($parsed_url['path'], '/');
+        if ($install_path !== '' && $install_path !== '/') {
+            $domain_root .= rtrim($install_path, '/');
         }
 
         // スクレイパーを初期化（タイトル取得は常に必要）
@@ -588,9 +672,13 @@ class KSPB_Breadcrumb_Builder {
             // URL構築用のエンコードされたパス
             $encoded_segments = array_map('rawurlencode', $path_segments);
             $encoded_path = '/' . implode('/', $encoded_segments);
-            // ドメインルートからの完全なURLを生成
-            $parsed_url = parse_url(home_url());
-            $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'];
+            // ドメインルートからの完全なURLを生成 (parse_url 失敗に備えた defensive)。
+            // ループ冒頭で取得した $scheme / $host を再利用すれば本来冗長だが、将来の
+            // filter で home_url() が動的変化するケースへの保険として再取得する。
+            $parsed_loop = parse_url(home_url());
+            $loop_scheme = (is_array($parsed_loop) ? ($parsed_loop['scheme'] ?? 'https') : 'https');
+            $loop_host = (is_array($parsed_loop) ? ($parsed_loop['host'] ?? '') : '');
+            $domain_root = $loop_scheme . '://' . $loop_host;
             $url = $domain_root . $encoded_path . '/';
             // パーセントエンコーディングを小文字に統一（%E3 → %e3）
             $url = $this->lowercase_percent_encoding($url);
@@ -734,16 +822,6 @@ class KSPB_Breadcrumb_Builder {
         return array_values($segments); // インデックスをリセット
     }
 
-    /**
-     * 完全なURLセグメントを取得（ドメインルートから）
-     */
-    private function get_full_url_segments() {
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
-        $url_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
-
-        $segments = array_filter(explode('/', trim($url_path, '/')));
-        return array_map('urldecode', $segments);
-    }
 
     /**
      * スラッグを整形
@@ -751,519 +829,6 @@ class KSPB_Breadcrumb_Builder {
     private function format_slug($slug) {
         // スラッグを人間が読みやすい形式に変換
         return ucwords(str_replace(['-', '_'], ' ', $slug));
-    }
-    
-
-    /**
-     * 投稿ページのパンくずを構築
-     */
-    private function build_post_breadcrumbs($breadcrumbs) {
-        global $post;
-        $position = count($breadcrumbs) + 1;
-        $depth_counter = 0;
-
-        // すべての投稿タイプでURLパスベースで構築
-        if (true) {
-            // URLパスから階層を構築（最後の記事タイトルは除く）
-            $current_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-            $path_segments = array_values(array_filter(explode('/', trim($current_path, '/'))));
-            
-            // 最後のセグメント（記事のスラッグ）を除いてパンくずを構築
-            if (!empty($path_segments)) {
-                array_pop($path_segments); // 記事のスラッグを除去
-                
-                $position = count($breadcrumbs) + 1;
-                $options = $this->get_options();
-                $enable_scraping = !empty($options['enable_scraping']);
-                
-                $parsed_url = parse_url(home_url());
-                $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'];
-                $scraper = $enable_scraping ? new KSPB_URL_Scraper($options) : null;
-
-                // 各階層を追加（スクレイピング機能でタイトル取得）
-                foreach ($path_segments as $index => $segment) {
-                    $accumulated_path = '/' . implode('/', array_slice($path_segments, 0, $index + 1));
-                    $url = $domain_root . $accumulated_path . '/';
-                    
-                    $title = $this->format_slug($segment);
-                    
-                    // スクレイピングでタイトル取得
-                    if ($enable_scraping && $scraper) {
-                        $scraped_title = $scraper->get_title_from_url($url);
-                        if ($scraped_title) {
-                            $title = $scraped_title;
-                        }
-                    }
-                    
-                    $breadcrumbs[] = [
-                        'title' => $title,
-                        'url' => $url,
-                        'position' => $position++
-                    ];
-                }
-            }
-            
-            // 現在の投稿を追加
-            $breadcrumbs[] = [
-                'title' => get_the_title($post->ID),
-                'url' => get_permalink($post->ID),
-                'position' => count($breadcrumbs) + 1
-            ];
-            
-            return $breadcrumbs;
-        }
-
-        // 通常の投稿の場合：カテゴリーを取得
-        $categories = get_the_category($post->ID);
-        if (!empty($categories)) {
-            $primary_category = $categories[0];
-
-            // 親カテゴリーがある場合は階層を辿る
-            $category_parents = get_category_parents($primary_category->term_id, false, '/', true);
-            if ($category_parents && !is_wp_error($category_parents)) {
-                $parent_slugs = explode('/', trim($category_parents, '/'));
-
-                // スクレイピング機能の設定を確認
-                $options = $this->get_options();
-                $enable_scraping = !empty($options['enable_scraping']);
-                $scraper = $enable_scraping ? new KSPB_URL_Scraper($options) : null;
-
-                foreach ($parent_slugs as $parent_slug) {
-                    if (empty($parent_slug)) continue;
-                    if (++$depth_counter > self::MAX_DEPTH) break;
-
-                    $parent_cat = get_category_by_slug($parent_slug);
-                    if ($parent_cat) {
-                        $cat_url = get_category_link($parent_cat->term_id);
-                        $cat_title = $parent_cat->name;
-
-                        // スクレイピングが有効な場合、URLステータスをチェック
-                        if ($enable_scraping && $scraper) {
-                            $status_data = $scraper->check_url_status($cat_url);
-                            $status = is_array($status_data) ? $status_data['status'] : $status_data;
-
-                            // 現在のURLパスから適切な階層を取得
-                            $current_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-                            $path_segments = array_values(array_filter(explode('/', $current_path)));
-
-                            // URLパスベースの期待されるURL
-                            $expected_url = null;
-                            if (isset($path_segments[$depth_counter - 1])) {
-                                $parsed_url = parse_url(home_url());
-                                $domain_root = $parsed_url['scheme'] . '://' . $parsed_url['host'];
-                                $expected_url = $domain_root . '/' . implode('/', array_slice($path_segments, 0, $depth_counter)) . '/';
-                            }
-
-                            // カテゴリーURLと期待されるURLが異なる場合
-                            $use_expected_url = false;
-                            if ($expected_url && $cat_url !== $expected_url) {
-                                // カテゴリーベースを確認
-                                $category_base = get_option('category_base');
-                                if (empty($category_base)) {
-                                    $category_base = 'category';
-                                }
-
-                                // カテゴリーURLにカテゴリーベースが含まれているが、実際のURLパスには含まれていない
-                                if (strpos($cat_url, '/' . $category_base . '/') !== false &&
-                                    strpos($expected_url, '/' . $category_base . '/') === false) {
-                                    $use_expected_url = true;
-                                }
-                            }
-
-                            // リダイレクトの場合を最優先で処理
-                            if (($status === 301 || $status === 302) && !empty($status_data['redirect_to'])) {
-                                // リダイレクトの場合、リダイレクト先を使用
-                                $cat_url = $status_data['redirect_to'];
-                            } elseif ($status === 404 || $status === 0 || $use_expected_url) {
-                                // 404エラーの場合、または期待されるURLを使用すべき場合
-                                if ($expected_url) {
-                                    $alternative_url = $expected_url;
-
-                                    // 代替URLのステータスをチェック
-                                    $alt_status_data = $scraper->check_url_status($alternative_url);
-                                    $alt_status = is_array($alt_status_data) ? $alt_status_data['status'] : $alt_status_data;
-
-                                    if ($alt_status === 200 || $alt_status === 301 || $alt_status === 302) {
-                                        // 代替URLが有効な場合は使用
-                                        $cat_url = $alternative_url;
-                                        $status = $alt_status;  // ステータスも更新
-
-                                        // リダイレクトの場合
-                                        if (($alt_status === 301 || $alt_status === 302) && !empty($alt_status_data['redirect_to'])) {
-                                            $cat_url = $alt_status_data['redirect_to'];
-                                        }
-                                    }
-                                }
-                            }
-
-                            $breadcrumbs[] = [
-                                'title' => $cat_title,
-                                'url' => $cat_url,
-                                'position' => $position++,
-                                'status' => $status
-                            ];
-                        } else {
-                            // スクレイピング無効時は通常のカテゴリーURLを使用
-                            $breadcrumbs[] = [
-                                'title' => $cat_title,
-                                'url' => $cat_url,
-                                'position' => $position++
-                            ];
-                        }
-                    }
-                }
-            }
-        }
-
-        // 現在の投稿
-        $breadcrumbs[] = $this->create_breadcrumb_item(
-            get_the_title($post->ID),
-            get_permalink($post->ID),
-            $position
-        );
-
-        return $breadcrumbs;
-    }
-
-    /**
-     * 固定ページのパンくずを構築
-     */
-    private function build_page_breadcrumbs($breadcrumbs) {
-        global $post;
-        $position = count($breadcrumbs) + 1;
-        $depth_counter = 0;
-
-                // 親ページがある場合は階層を辿る
-        $ancestors = get_post_ancestors($post->ID);
-        if (!empty($ancestors)) {
-            $ancestors = array_reverse($ancestors);
-            foreach ($ancestors as $ancestor_id) {
-                if (++$depth_counter > self::MAX_DEPTH) break; // 深度制限
-
-                $breadcrumbs[] = $this->create_breadcrumb_item(
-                    get_the_title($ancestor_id),
-                    get_permalink($ancestor_id),
-                    $position++
-                );
-            }
-        }
-
-        // 現在のページ
-        $breadcrumbs[] = $this->create_breadcrumb_item(
-            get_the_title($post->ID),
-            get_permalink($post->ID),
-            $position
-        );
-
-        return $breadcrumbs;
-    }
-
-    /**
-     * タクソノミーアーカイブのパンくずを構築
-     */
-    private function build_taxonomy_breadcrumbs($breadcrumbs) {
-        $position = count($breadcrumbs) + 1;
-        $queried_object = get_queried_object();
-        $depth_counter = 0;
-
-        if (is_category()) {
-            // カテゴリーアーカイブ
-            $category = $queried_object;
-
-                        // 親カテゴリーがある場合
-            if ($category->parent != 0) {
-                $parent_categories = get_category_parents($category->parent, false, '/', true);
-                if ($parent_categories && !is_wp_error($parent_categories)) {
-                    $parent_slugs = explode('/', trim($parent_categories, '/'));
-
-
-
-                    foreach ($parent_slugs as $parent_slug) {
-                        if (empty($parent_slug)) continue;
-                        if (++$depth_counter > self::MAX_DEPTH) break; // 深度制限
-
-                                                $parent_cat = get_category_by_slug($parent_slug);
-                        if ($parent_cat) {
-                            $breadcrumbs[] = $this->create_breadcrumb_item(
-                                $parent_cat->name,
-                                get_category_link($parent_cat->term_id),
-                                $position++
-                            );
-                        }
-                    }
-                }
-            }
-
-                        // 現在のカテゴリー
-            $breadcrumbs[] = $this->create_breadcrumb_item(
-                $category->name,
-                get_category_link($category->term_id),
-                $position
-            );
-        } elseif (is_tag()) {
-            // タグアーカイブ
-            $tag = $queried_object;
-            $breadcrumbs[] = $this->create_breadcrumb_item(
-                $tag->name,
-                get_tag_link($tag->term_id),
-                $position
-            );
-                } elseif (is_tax()) {
-            // カスタムタクソノミーアーカイブ
-            $term = $queried_object;
-            $taxonomy = get_taxonomy($term->taxonomy);
-
-            // タクソノミーラベルを追加
-            if ($taxonomy) {
-                $breadcrumbs[] = $this->create_breadcrumb_item(
-                    $taxonomy->labels->name,
-                    get_post_type_archive_link(get_post_type()),
-                    $position++
-                );
-            }
-
-            // 現在のターム
-            $breadcrumbs[] = $this->create_breadcrumb_item(
-                $term->name,
-                get_term_link($term),
-                $position
-            );
-        }
-
-        return $breadcrumbs;
-    }
-
-    /**
-     * アーカイブページのパンくずを構築
-     */
-    private function build_archive_breadcrumbs($breadcrumbs) {
-        $position = count($breadcrumbs) + 1;
-
-        if (is_date()) {
-            // 日付アーカイブ
-            if (is_year()) {
-                $breadcrumbs[] = $this->create_breadcrumb_item(
-                    get_the_date('Y年'),
-                    get_year_link(get_the_date('Y')),
-                    $position
-                );
-            } elseif (is_month()) {
-                // 年
-                $breadcrumbs[] = $this->create_breadcrumb_item(
-                    get_the_date('Y年'),
-                    get_year_link(get_the_date('Y')),
-                    $position++
-                );
-                // 月
-                $breadcrumbs[] = $this->create_breadcrumb_item(
-                    get_the_date('n月'),
-                    get_month_link(get_the_date('Y'), get_the_date('n')),
-                    $position
-                );
-            } elseif (is_day()) {
-                // 年
-                $breadcrumbs[] = $this->create_breadcrumb_item(
-                    get_the_date('Y年'),
-                    get_year_link(get_the_date('Y')),
-                    $position++
-                );
-                // 月
-                $breadcrumbs[] = $this->create_breadcrumb_item(
-                    get_the_date('n月'),
-                    get_month_link(get_the_date('Y'), get_the_date('n')),
-                    $position++
-                );
-                // 日
-                $breadcrumbs[] = $this->create_breadcrumb_item(
-                    get_the_date('j日'),
-                    get_day_link(get_the_date('Y'), get_the_date('n'), get_the_date('j')),
-                    $position
-                );
-            }
-        } elseif (is_author()) {
-            // 著者アーカイブ
-            $author = get_queried_object();
-            $breadcrumbs[] = $this->create_breadcrumb_item(
-                $author->display_name,
-                get_author_posts_url($author->ID),
-                $position
-            );
-        } elseif (is_post_type_archive()) {
-            // カスタム投稿タイプアーカイブ - 階層は作らず単純にアーカイブを追加
-            // build_from_url_pathを呼ばない（無限ループ防止）
-            // 親の階層はbuildメソッドで既に処理されている
-        }
-
-        return $breadcrumbs;
-    }
-
-    /**
-     * オプションを取得（親クラスのメソッドを呼び出し）
-     */
-    private function get_options() {
-        $instance = KashiwazakiSeoPerfectBreadcrumbs::get_instance();
-        return $instance->get_options();
-    }
-
-    /**
-     * WordPressの内部情報から項目を検索
-     */
-    private function find_wordpress_item($segment, $path) {
-        // 1. 固定ページを検索（累積パスで）
-        $page = get_page_by_path(ltrim($path, '/'));
-        if ($page && $page->post_status === 'publish') {
-            return [
-                'title' => get_the_title($page->ID),
-                'url' => get_permalink($page->ID)
-            ];
-        }
-
-        // 2. カテゴリーを検索
-        $category = get_category_by_slug($segment);
-        if ($category) {
-            return [
-                'title' => $category->name,
-                'url' => get_category_link($category->term_id)
-            ];
-        }
-
-        // 3. 投稿を検索
-        $posts = get_posts([
-            'name' => $segment,
-            'post_type' => 'post',
-            'post_status' => 'publish',
-            'numberposts' => 1
-        ]);
-
-        if (!empty($posts)) {
-            return [
-                'title' => get_the_title($posts[0]->ID),
-                'url' => get_permalink($posts[0]->ID)
-            ];
-        }
-
-        // 4. タグを検索
-        $tag = get_term_by('slug', $segment, 'post_tag');
-        if ($tag) {
-            return [
-                'title' => $tag->name,
-                'url' => get_tag_link($tag->term_id)
-            ];
-        }
-
-        // 5. カスタム投稿タイプを検索
-        $post_types = get_post_types(['public' => true, '_builtin' => false], 'names');
-        foreach ($post_types as $post_type) {
-            $custom_posts = get_posts([
-                'name' => $segment,
-                'post_type' => $post_type,
-                'post_status' => 'publish',
-                'numberposts' => 1
-            ]);
-
-            if (!empty($custom_posts)) {
-                return [
-                    'title' => get_the_title($custom_posts[0]->ID),
-                    'url' => get_permalink($custom_posts[0]->ID)
-                ];
-            }
-        }
-
-        // 6. カスタムタクソノミーを検索
-        $taxonomies = get_taxonomies(['public' => true, '_builtin' => false], 'names');
-        foreach ($taxonomies as $taxonomy) {
-            $term = get_term_by('slug', $segment, $taxonomy);
-            if ($term) {
-                return [
-                    'title' => $term->name,
-                    'url' => get_term_link($term)
-                ];
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * カスタム投稿タイプの個別記事用パンくず構築
-     */
-    private function build_custom_post_breadcrumbs($breadcrumbs, $post) {
-        $position = count($breadcrumbs) + 1;
-        $post_type_obj = get_post_type_object(get_post_type($post->ID));
-
-        // カスタム投稿タイプアーカイブを追加（スクレイピング無し）
-        if ($post_type_obj && $post_type_obj->has_archive) {
-            $breadcrumbs[] = [
-                'title' => $post_type_obj->labels->name,
-                'url' => get_post_type_archive_link($post_type_obj->name),
-                'position' => $position++
-            ];
-        }
-
-        // カスタムタクソノミーの階層を追加
-        $taxonomies = get_object_taxonomies($post_type_obj->name, 'objects');
-        foreach ($taxonomies as $taxonomy) {
-            if ($taxonomy->hierarchical) {
-                $terms = get_the_terms($post->ID, $taxonomy->name);
-                if (!empty($terms) && !is_wp_error($terms)) {
-                    // 最も深い階層のタームを取得
-                    $deepest_term = null;
-                    $max_level = 0;
-                    
-                    foreach ($terms as $term) {
-                        $level = $this->get_term_level($term);
-                        if ($level > $max_level) {
-                            $max_level = $level;
-                            $deepest_term = $term;
-                        }
-                    }
-                    
-                    if ($deepest_term) {
-                        // 親タームから順番に追加
-                        $term_ancestors = get_ancestors($deepest_term->term_id, $taxonomy->name);
-                        $term_ancestors = array_reverse($term_ancestors);
-                        
-                        foreach ($term_ancestors as $ancestor_id) {
-                            $ancestor_term = get_term($ancestor_id, $taxonomy->name);
-                            $breadcrumbs[] = [
-                                'title' => $ancestor_term->name,
-                                'url' => get_term_link($ancestor_term),
-                                'position' => $position++
-                            ];
-                        }
-                        
-                        // 現在のタームを追加
-                        $breadcrumbs[] = [
-                            'title' => $deepest_term->name,
-                            'url' => get_term_link($deepest_term),
-                            'position' => $position++
-                        ];
-                    }
-                    break; // 最初の階層タクソノミーのみ使用
-                }
-            }
-        }
-
-        // 現在の投稿を追加
-        $breadcrumbs[] = [
-            'title' => get_the_title($post->ID),
-            'url' => get_permalink($post->ID),
-            'position' => $position
-        ];
-
-        return $breadcrumbs;
-    }
-
-    /**
-     * タームの階層レベルを取得
-     */
-    private function get_term_level($term) {
-        $level = 0;
-        while ($term->parent != 0) {
-            $term = get_term($term->parent, $term->taxonomy);
-            $level++;
-        }
-        return $level;
     }
 }
 
@@ -1399,14 +964,84 @@ class KSPB_URL_Scraper {
     private const MAX_RETRIES = 2;
 
     /**
-     * 永久ループ防止用の最大深度
+     * 1 リクエスト内で許可する外部スクレイピング回数の上限。
+     * 公開リクエストから無制限に wp_remote_get が走るのを防ぐサーキットブレーカ。
      */
-    private const MAX_DEPTH = 5;
+    private const MAX_SCRAPES_PER_REQUEST = 10;
+
+    /**
+     * get_title_from_url の失敗結果に使う negative cache の sentinel。
+     * transient の false (=未ヒット) と区別するために文字列で保存する。
+     */
+    private const NEGATIVE_SENTINEL = '__kspb_null__';
+
+    /**
+     * Negative cache (取得失敗時の短期キャッシュ) の保持秒数。
+     */
+    private const NEGATIVE_CACHE_DURATION = 300;
+
+    /**
+     * キャッシュバージョン管理用 option 名。clear_cache でこのバージョンを +1 する
+     * (論理無効化) ことで、persistent object cache drop-in (Redis Object Cache 等)
+     * 利用時にも古い transient を一括無効化できる。物理削除は DB 側のみで行い、
+     * object cache に残った古い version キーは TTL で自然消滅する (TTL は Redis や
+     * Memcached もそのまま尊重するため、整合性の問題は起きない)。
+     *
+     * レジストリ + update_option 方式は TOCTOU race で新キー消失リスクがあり、
+     * かつレジストリ上限を超えると古いキーが残存したため、ここでは採用しない。
+     */
+    private const CACHE_VERSION_OPTION = 'kspb_cache_version';
 
     /**
      * 訪問済みURLリスト（永久ループ防止）
      */
     private $visited_urls = [];
+
+    /**
+     * 1 リクエスト内での外部スクレイピング試行回数カウンタ。
+     */
+    private $scrape_count = 0;
+
+    /**
+     * 現在のキャッシュバージョン (整数) を取得。オプション未設定時は 1。
+     */
+    private static function cache_version() {
+        $v = get_option(self::CACHE_VERSION_OPTION, 1);
+        return is_numeric($v) ? (int) $v : 1;
+    }
+
+    /**
+     * transient キーに現在のキャッシュバージョンを含めて生成する。clear_cache で
+     * バージョンが bump されると、古い version 付きキーは get_transient 側で
+     * 参照されなくなり、object cache 側に残ったデータも TTL で自然消滅する。
+     *
+     * さらに Basic 認証の状態 (username + パスワード有無) を hash として key に混ぜる
+     * ことで、認証設定変更時にキャッシュが自動的に無効化される (保護ページタイトルが
+     * 旧認証設定のまま残留する経路を遮断)。
+     *
+     * @param string $prefix 'status' | 'title' など論理キーの接頭辞
+     * @param string $url    キャッシュ対象 URL
+     */
+    private static function versioned_cache_key($prefix, $url) {
+        return 'kspb_' . $prefix . '_v' . self::cache_version() . '_' . self::auth_state_hash() . '_' . md5($url);
+    }
+
+    /**
+     * Basic 認証の状態を短い hash 化して返す。username またはパスワード保存値が変わると
+     * hash も変わるため、cache key が自動的に別物になり旧キャッシュが論理的に無効化される。
+     * wp_salt('auth') で keyed HMAC を取るので、保存値が sodium 不在時に平文化しても
+     * cache key から元値をオフラインで推測することはできない。
+     */
+    private static function auth_state_hash() {
+        $options = get_option(KSPB_OPTION_NAME, []);
+        if (!is_array($options)) {
+            $options = [];
+        }
+        $user = (string) ($options['auth_username'] ?? '');
+        $pw_ref = (string) ($options['auth_password'] ?? '');
+        $material = $user . '|' . $pw_ref;
+        return substr(hash_hmac('sha256', $material, wp_salt('auth')), 0, 8);
+    }
 
     /**
      * Basic認証ヘッダー
@@ -1418,12 +1053,25 @@ class KSPB_URL_Scraper {
      */
     public function __construct($options = []) {
         $username = $options['auth_username'] ?? '';
-        $password = $options['auth_password'] ?? '';
+        // 保存値は暗号化されているため復号してからヘッダに使う (旧平文は透過的に扱う)
+        $password = KSPB_Crypto::decrypt($options['auth_password'] ?? '');
         if ($username !== '' && $password !== '') {
             $this->auth_headers = [
                 'Authorization' => 'Basic ' . base64_encode($username . ':' . $password)
             ];
         }
+    }
+
+    /**
+     * 外部 HTTP リクエスト時に SSL 証明書検証を行うかどうか。
+     *
+     * デフォルトは true (本番想定)。WP_DEBUG=true の開発環境では自己署名等を
+     * 通しやすくするため false。さらに `kspb_sslverify` フィルタで任意に上書き可能。
+     * 返却値は必ず boolean。
+     */
+    private static function should_verify_ssl() {
+        $default = !(defined('WP_DEBUG') && WP_DEBUG);
+        return (bool) apply_filters('kspb_sslverify', $default);
     }
 
     /**
@@ -1436,8 +1084,9 @@ class KSPB_URL_Scraper {
             return ['status' => 200, 'redirect_to' => null];
         }
 
-        // キャッシュチェック
-        $cache_key = 'kspb_status_v2_' . md5($url);
+        // キャッシュキーにはキャッシュバージョンを含める。clear_cache で version を
+        // bump することで論理無効化され、object cache 側も TTL で自然消滅する。
+        $cache_key = self::versioned_cache_key('status', $url);
         $cached_data = get_transient($cache_key);
         if ($cached_data !== false) {
             return $cached_data;
@@ -1448,7 +1097,7 @@ class KSPB_URL_Scraper {
             'timeout' => self::TIMEOUT,
             'redirection' => 0,  // リダイレクトを追跡しない
             'user-agent' => 'KSPB Breadcrumbs Bot/1.0',
-            'sslverify' => false,
+            'sslverify' => self::should_verify_ssl(),
             'headers' => $this->auth_headers
         ]);
 
@@ -1458,13 +1107,42 @@ class KSPB_URL_Scraper {
 
         $status_code = wp_remote_retrieve_response_code($response);
 
-        // リダイレクト先のLocationヘッダーを取得
+        // リダイレクト先のLocationヘッダーを取得。
+        // scheme-relative (//evil.example) / relative (new-page, ../path) / 大文字スキーム
+        // (HTTP://) / javascript: / data: など多様な形式を WP_Http::make_absolute_url で
+        // 一度絶対 URL に正規化してから、http/https + home_url() の同一ホストに限定する。
+        // これで偶然の防御ではなく明示的なホワイトリスト判定になる。
         $location = wp_remote_retrieve_header($response, 'location');
+        if (is_string($location)) {
+            $location = trim($location);
+        } else {
+            $location = '';
+        }
 
-        // 相対URLの場合は絶対URLに変換
-        if ($location && strpos($location, 'http') !== 0) {
-            $parsed = parse_url($url);
-            $location = $parsed['scheme'] . '://' . $parsed['host'] . $location;
+        if ($location !== '' && class_exists('WP_Http') && method_exists('WP_Http', 'make_absolute_url')) {
+            $location = WP_Http::make_absolute_url($location, $url);
+        }
+        if (!is_string($location) || $location === '') {
+            $location = null;
+        }
+
+        if ($location) {
+            // parse_url は 不正な URL で false、component アクセスで warning を起こすため
+            // is_array ガードで defensive に扱う。
+            $parsed_loc = parse_url($location);
+            $loc_scheme = (is_array($parsed_loc) && isset($parsed_loc['scheme']))
+                ? strtolower($parsed_loc['scheme'])
+                : '';
+            $loc_host = (is_array($parsed_loc) ? ($parsed_loc['host'] ?? '') : '');
+            $home_host = parse_url(home_url(), PHP_URL_HOST);
+            // scheme は http/https 限定、host は home_url と同一のみ採用。
+            // 不一致・不明・非 http(s) スキーム (javascript:, data:, file: 等) はすべて拒否。
+            if (!in_array($loc_scheme, ['http', 'https'], true)
+                || $loc_host === ''
+                || !$home_host
+                || strcasecmp($loc_host, $home_host) !== 0) {
+                $location = null;
+            }
         }
 
 
@@ -1494,37 +1172,51 @@ class KSPB_URL_Scraper {
         }
         $this->visited_urls[] = $url;
 
-        // キャッシュチェック
-        $cache_key = 'kspb_title_' . md5($url);
+        // キャッシュキーにはキャッシュバージョンを含める (clear_cache の version bump で
+        // 論理無効化)。negative sentinel なら失敗として null を返す。
+        $cache_key = self::versioned_cache_key('title', $url);
         $cached_title = get_transient($cache_key);
         if ($cached_title !== false) {
-            return $cached_title;
+            return ($cached_title === self::NEGATIVE_SENTINEL) ? null : $cached_title;
         }
 
-        // HTTPリクエスト
+        // Per-request サーキットブレーカ: 1 リクエストあたりの外部 HTTP 数を抑制し
+        // 長い URL 攻撃などで自己 DoS に陥るのを防ぐ。cache miss 時のみインクリメント。
+        if ($this->scrape_count >= self::MAX_SCRAPES_PER_REQUEST) {
+            return null;
+        }
+        $this->scrape_count++;
+
+        // HTTPリクエスト。redirection=0 で wp_remote_get 内部のリダイレクト追跡を禁止し、
+        // SSRF の到達範囲を広げない (3xx レスポンスは空 body でネガティブキャッシュされる)。
         $response = wp_remote_get($url, [
             'timeout' => self::TIMEOUT,
-            'redirection' => 3,
+            'redirection' => 0,
             'user-agent' => 'KSPB Breadcrumbs Bot/1.0',
-            'sslverify' => false, // 開発環境対応
+            'sslverify' => self::should_verify_ssl(),
             'headers' => $this->auth_headers
         ]);
 
+        // 失敗系はすべて短期間の negative cache に入れ、同一 URL の連続攻撃で
+        // 毎回外部 HTTP が走るのを防ぐ。
         if (is_wp_error($response)) {
+            set_transient($cache_key, self::NEGATIVE_SENTINEL, self::NEGATIVE_CACHE_DURATION);
             return null;
         }
 
         $body = wp_remote_retrieve_body($response);
         if (empty($body)) {
+            set_transient($cache_key, self::NEGATIVE_SENTINEL, self::NEGATIVE_CACHE_DURATION);
             return null;
         }
 
         // タイトルタグを抽出
         $title = $this->extract_title($body);
 
-        // キャッシュに保存
         if ($title) {
             set_transient($cache_key, $title, self::CACHE_DURATION);
+        } else {
+            set_transient($cache_key, self::NEGATIVE_SENTINEL, self::NEGATIVE_CACHE_DURATION);
         }
 
         return $title;
@@ -1588,22 +1280,118 @@ class KSPB_URL_Scraper {
     public function clear_cache() {
         global $wpdb;
 
-        // すべてのKSPB関連キャッシュを削除
+        // (1) キャッシュバージョンを bump = すべての kspb transient を論理的に無効化。
+        // 次回 versioned_cache_key() は新バージョンのキーを返すため、以降 get_transient は
+        // MISS となり再取得される。古い version のキーは object cache 上に残るが TTL で
+        // 自然消滅する (Redis / Memcached も TTL を尊重する)。
+        // この方式は registry + update_option の TOCTOU race や上限溢れの問題を回避する。
+        $current = self::cache_version();
+        update_option(self::CACHE_VERSION_OPTION, $current + 1, false);
+
+        // (2) wp_options の kspb transient 行の物理削除 (DB-only 環境の掃除、
+        // options テーブル肥大化防止)。LIKE の ESCAPE を 3 層で厳密化:
+        //   PHP 文字列 `\\\\_%` → MySQL 受信 `\\_%` → LIKE 評価で `\_` (リテラル `_`)。
+        //   ESCAPE 句自体も `'\\\\'` (PHP) → `'\\'` (MySQL) → ESCAPE 文字 `\`。
         $wpdb->query(
             "DELETE FROM {$wpdb->options}
-            WHERE option_name LIKE '_transient_kspb_%'
-            OR option_name LIKE '_transient_timeout_kspb_%'"
+             WHERE option_name LIKE '_transient_kspb\\\\_%' ESCAPE '\\\\'
+                OR option_name LIKE '_transient_timeout_kspb\\\\_%' ESCAPE '\\\\'"
         );
 
-        // 古い形式のキャッシュも念のため削除
-        $wpdb->query(
-            "DELETE FROM {$wpdb->options}
-            WHERE option_name LIKE '_transient_kspb_status_%'
-            OR option_name LIKE '_transient_timeout_kspb_status_%'"
-        );
+        // wp_cache_flush() は使わない: 他プラグイン / WP 本体のキャッシュ全体を消す副作用を
+        // 避けるため。object cache 側の kspb 旧キーはバージョン不一致で参照されず、TTL
+        // 満了まで残るのみで実害なし。
+    }
+}
 
-        // オブジェクトキャッシュもクリア
-        wp_cache_flush();
+/**
+ * 認証情報などの機密文字列を sodium_crypto_secretbox で暗号化保存するユーティリティ。
+ *
+ * wp_salt('auth') から派生した対称鍵で暗号化するため、同一サイト内で復号できる。
+ * 暗号化済み値は "enc:" プレフィックス付きで保存。プレフィックスが無い値 (旧 1.0.5
+ * までの平文) は自動的に平文として復号される (後方互換)。
+ */
+class KSPB_Crypto {
+
+    const PREFIX = 'enc:';
+
+    /**
+     * 平文を暗号化して "enc:base64(nonce||cipher)" 形式で返す。
+     * 空文字列はそのまま返す。sodium 拡張が無い環境では平文を返す (best-effort)。
+     */
+    public static function encrypt($plaintext) {
+        if ($plaintext === null || $plaintext === '') {
+            return '';
+        }
+        if (!function_exists('sodium_crypto_secretbox') || !defined('SODIUM_CRYPTO_SECRETBOX_NONCEBYTES')) {
+            return (string) $plaintext;
+        }
+        // random_bytes はエントロピー枯渇などで例外を投げ得る。fatal を避け平文フォールバック。
+        try {
+            $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        } catch (\Exception $e) {
+            return (string) $plaintext;
+        }
+        $cipher = sodium_crypto_secretbox((string) $plaintext, $nonce, self::key());
+        return self::PREFIX . base64_encode($nonce . $cipher);
+    }
+
+    /**
+     * 暗号化文字列を復号。"enc:" プレフィックスが無い入力は平文として透過的に返す。
+     * 復号失敗時は空文字列を返す。
+     */
+    public static function decrypt($stored) {
+        if ($stored === null || $stored === '') {
+            return '';
+        }
+        $stored = (string) $stored;
+        if (strncmp($stored, self::PREFIX, strlen(self::PREFIX)) !== 0) {
+            return $stored; // 旧バージョンの平文 (後方互換)
+        }
+        if (!function_exists('sodium_crypto_secretbox_open') || !defined('SODIUM_CRYPTO_SECRETBOX_NONCEBYTES')) {
+            return '';
+        }
+        $raw = base64_decode(substr($stored, strlen(self::PREFIX)), true);
+        if ($raw === false || strlen($raw) < SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
+            return '';
+        }
+        $nonce = substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $cipher = substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $plain = sodium_crypto_secretbox_open($cipher, $nonce, self::key());
+        return $plain === false ? '' : $plain;
+    }
+
+    /**
+     * 値が暗号文の「形式」を満たすかだけを判定する (実際の復号可否は問わない)。
+     * - PREFIX 付き
+     * - base64 decode 可能
+     * - nonce + MAC の最低長を満たす
+     *
+     * true = format valid。valid だが復号不能の場合 (鍵/salt 変更、一時的な sodium 不在等)
+     *   は元値を保持して将来の復旧可能性を残すために使う。
+     * false = format invalid = 偶然 PREFIX で始まる平文、または壊れた文字列。migration 対象。
+     */
+    public static function is_valid_ciphertext_format($stored) {
+        if (!is_string($stored) || $stored === '') {
+            return false;
+        }
+        $prefix_len = strlen(self::PREFIX);
+        if (strncmp($stored, self::PREFIX, $prefix_len) !== 0) {
+            return false;
+        }
+        if (!defined('SODIUM_CRYPTO_SECRETBOX_NONCEBYTES') || !defined('SODIUM_CRYPTO_SECRETBOX_MACBYTES')) {
+            return false;
+        }
+        $raw = base64_decode(substr($stored, $prefix_len), true);
+        if ($raw === false) {
+            return false;
+        }
+        $min = SODIUM_CRYPTO_SECRETBOX_NONCEBYTES + SODIUM_CRYPTO_SECRETBOX_MACBYTES;
+        return strlen($raw) >= $min;
+    }
+
+    private static function key() {
+        return substr(hash('sha256', wp_salt('auth'), true), 0, SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
     }
 }
 
@@ -1615,12 +1403,9 @@ function kspb_display_breadcrumbs() {
     $instance = KashiwazakiSeoPerfectBreadcrumbs::get_instance();
     $options = $instance->get_options();
 
-    // 表示条件をチェック
-    $reflection = new ReflectionClass($instance);
-    $method = $reflection->getMethod('should_display_breadcrumbs');
-    $method->setAccessible(true);
-
-    if (!$method->invoke($instance, $options)) {
+    // 表示条件をチェック。should_display_breadcrumbs() を public 化したため
+    // ReflectionClass を介さず直接呼び出せる (ランタイムコスト + カプセル化解除 を回避)。
+    if (!$instance->should_display_breadcrumbs($options)) {
         return;
     }
 

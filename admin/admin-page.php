@@ -124,8 +124,20 @@ class KSPB_Admin_Page {
     
     /**
      * 管理画面を表示
+     *
+     * WordPress の add_menu_page() 側でも manage_options 権限は要求しているが、
+     * render() は public static で他経路からも呼び出せるため、書き込み・表示の
+     * どちらに入る前でも defense-in-depth として明示的に権限を再確認する。
      */
     public static function render() {
+        if (!current_user_can('manage_options')) {
+            wp_die(
+                esc_html__('この操作を行う権限がありません。', 'kashiwazaki-seo-perfect-breadcrumbs'),
+                '',
+                ['response' => 403]
+            );
+        }
+
         $admin = new self();
         $admin->handle_form_submission();
         $admin->handle_cache_clear();
@@ -140,7 +152,23 @@ class KSPB_Admin_Page {
             return;
         }
         
-        $options = $this->sanitize_options($_POST);
+        // WordPress は $_POST に magic quotes 風のスラッシュを追加するため、
+        // 保存前に wp_unslash で元に戻してから sanitize へ渡す (WP 規約)。
+        $options = $this->sanitize_options(wp_unslash($_POST));
+
+        // Basic 認証 username にコロンが含まれると RFC 7617 で `:` が
+        // username:password の区切り文字になり、Authorization ヘッダ生成時に壊れる。
+        // 保存は拒否せず該当文字をストリップ + 管理画面に警告を出す。
+        if (isset($options['auth_username']) && strpos($options['auth_username'], ':') !== false) {
+            $options['auth_username'] = str_replace(':', '', $options['auth_username']);
+            add_settings_error(
+                'kspb_messages',
+                'kspb_username_colon_stripped',
+                __('ユーザー名からコロン ":" を除去しました（Basic 認証の形式上、コロンはユーザー名に使えません）。', 'kashiwazaki-seo-perfect-breadcrumbs'),
+                'warning'
+            );
+        }
+
         update_option(self::OPTION_NAME, $options);
         
         add_settings_error(
@@ -155,8 +183,9 @@ class KSPB_Admin_Page {
      * キャッシュクリア処理
      */
     private function handle_cache_clear() {
-        if (isset($_POST['clear_cache']) && isset($_POST[self::NONCE_FIELD]) 
-            && wp_verify_nonce($_POST[self::NONCE_FIELD], self::NONCE_ACTION)) {
+        // nonce 値は wp_unslash で元に戻してから検証 (WP 規約: $_POST は magic quotes 済)
+        if (isset($_POST['clear_cache']) && isset($_POST[self::NONCE_FIELD])
+            && wp_verify_nonce(wp_unslash($_POST[self::NONCE_FIELD]), self::NONCE_ACTION)) {
             
             $scraper = new KSPB_URL_Scraper();
             $scraper->clear_cache();
@@ -174,9 +203,10 @@ class KSPB_Admin_Page {
      * 有効な送信かチェック
      */
     private function is_valid_submission() {
-        return isset($_POST['submit']) 
+        // nonce 値は wp_unslash で元に戻してから検証 (WP 規約)
+        return isset($_POST['submit'])
             && isset($_POST[self::NONCE_FIELD])
-            && wp_verify_nonce($_POST[self::NONCE_FIELD], self::NONCE_ACTION);
+            && wp_verify_nonce(wp_unslash($_POST[self::NONCE_FIELD]), self::NONCE_ACTION);
     }
     
     /**
@@ -184,21 +214,57 @@ class KSPB_Admin_Page {
      */
     private function sanitize_options($data) {
         $sanitized = [];
-        
+        $existing = get_option(self::OPTION_NAME, []);
+
         foreach (self::FIELDS as $field => $config) {
+            // auth_password は特別扱い: フォームに送られてきた新しい値だけを暗号化、
+            // 空送信なら既存の暗号化済み値を維持、明示削除チェックで消去。
+            // パスワードは sanitize_text_field を通さない (< > & や空白など意味のある文字を
+            // 破壊し得るため)。$data は handle_form_submission で wp_unslash 済のため
+            // ここでの再 unslash は不要 (二重 unslash でバックスラッシュが消える)。
+            if ($field === 'auth_password') {
+                if (!empty($data['auth_password_clear'])) {
+                    $sanitized[$field] = '';
+                } elseif (isset($data[$field]) && $data[$field] !== '') {
+                    $raw = (string) $data[$field];
+                    $sanitized[$field] = KSPB_Crypto::encrypt($raw);
+                } else {
+                    $sanitized[$field] = $existing['auth_password'] ?? '';
+                }
+                continue;
+            }
+
             if ($config['type'] === 'checkbox') {
                 $sanitized[$field] = isset($data[$field]);
             } elseif ($config['type'] === 'checkbox_group') {
-                $sanitized[$field] = isset($data[$field]) 
-                    ? array_map('sanitize_text_field', $data[$field]) 
+                $submitted = isset($data[$field]) && is_array($data[$field])
+                    ? array_map('sanitize_text_field', $data[$field])
                     : [];
+                if ($field === 'post_types' || $field === 'post_type_archives') {
+                    $allowed = get_post_types(['public' => true], 'names');
+                    $submitted = array_values(array_intersect($submitted, $allowed));
+                }
+                $sanitized[$field] = $submitted;
+            } elseif ($config['type'] === 'number') {
+                // number 型は absint だけでなく min/max で clamp (クライアント側の
+                // <input min max> は迂回可能なため、サーバー側でも必ず範囲を強制する)。
+                $raw = isset($data[$field])
+                    ? call_user_func($config['sanitize'], $data[$field])
+                    : ($config['default'] ?? 0);
+                if (isset($config['min'])) {
+                    $raw = max((int) $config['min'], $raw);
+                }
+                if (isset($config['max'])) {
+                    $raw = min((int) $config['max'], $raw);
+                }
+                $sanitized[$field] = $raw;
             } else {
-                $sanitized[$field] = isset($data[$field]) 
+                $sanitized[$field] = isset($data[$field])
                     ? call_user_func($config['sanitize'], $data[$field])
                     : '';
             }
         }
-        
+
         return $sanitized;
     }
     
@@ -343,7 +409,7 @@ class KSPB_Admin_Page {
                                    id="kspb_show_all"
                                    value="1"
                                    <?php checked($show_all); ?>
-                                   onchange="kspbToggleDetails(this.checked)">
+                                   data-kspb-toggle="detail-settings">
                             すべてのページでパンくずを表示する
                         </label>
                         <p class="description" style="margin: 8px 0 0 22px;">
@@ -362,8 +428,8 @@ class KSPB_Admin_Page {
                         <div class="kspb-section">
                             <h4>個別投稿ページ</h4>
                             <div class="kspb-bulk-actions">
-                                <button type="button" class="button button-small" onclick="kspbBulkCheck('post_types', true)">すべて選択</button>
-                                <button type="button" class="button button-small" onclick="kspbBulkCheck('post_types', false)">すべて解除</button>
+                                <button type="button" class="button button-small" data-kspb-bulk="post_types" data-kspb-checked="1">すべて選択</button>
+                                <button type="button" class="button button-small" data-kspb-bulk="post_types" data-kspb-checked="0">すべて解除</button>
                             </div>
                             <div class="kspb-checkbox-grid">
                                 <?php foreach ($post_types as $post_type): ?>
@@ -389,8 +455,8 @@ class KSPB_Admin_Page {
                         <div class="kspb-section">
                             <h4>カスタム投稿タイプアーカイブ</h4>
                             <div class="kspb-bulk-actions">
-                                <button type="button" class="button button-small" onclick="kspbBulkCheck('post_type_archives', true)">すべて選択</button>
-                                <button type="button" class="button button-small" onclick="kspbBulkCheck('post_type_archives', false)">すべて解除</button>
+                                <button type="button" class="button button-small" data-kspb-bulk="post_type_archives" data-kspb-checked="1">すべて選択</button>
+                                <button type="button" class="button button-small" data-kspb-bulk="post_type_archives" data-kspb-checked="0">すべて解除</button>
                             </div>
                             <div class="kspb-checkbox-grid">
                                 <?php foreach ($custom_post_types as $post_type): ?>
@@ -411,8 +477,8 @@ class KSPB_Admin_Page {
                         <div class="kspb-section">
                             <h4>標準アーカイブページ</h4>
                             <div class="kspb-bulk-actions">
-                                <button type="button" class="button button-small" onclick="kspbBulkCheck('standard_archives', true)">すべて選択</button>
-                                <button type="button" class="button button-small" onclick="kspbBulkCheck('standard_archives', false)">すべて解除</button>
+                                <button type="button" class="button button-small" data-kspb-bulk="standard_archives" data-kspb-checked="1">すべて選択</button>
+                                <button type="button" class="button button-small" data-kspb-bulk="standard_archives" data-kspb-checked="0">すべて解除</button>
                             </div>
                             <div class="kspb-checkbox-grid">
                                 <label>
@@ -479,17 +545,30 @@ class KSPB_Admin_Page {
                     </div>
 
                     <script>
-                    function kspbBulkCheck(group, checked) {
-                        var checkboxes = document.querySelectorAll('.kspb-check-' + group);
-                        checkboxes.forEach(function(checkbox) {
-                            checkbox.checked = checked;
+                    document.addEventListener('DOMContentLoaded', function() {
+                        document.querySelectorAll('[data-kspb-bulk]').forEach(function(btn) {
+                            btn.addEventListener('click', function() {
+                                var group = btn.getAttribute('data-kspb-bulk');
+                                var checked = btn.getAttribute('data-kspb-checked') === '1';
+                                document.querySelectorAll('.kspb-check-' + group).forEach(function(cb) {
+                                    cb.checked = checked;
+                                });
+                            });
                         });
-                    }
-
-                    function kspbToggleDetails(showAll) {
-                        var detailSettings = document.getElementById('kspb-detail-settings');
-                        detailSettings.style.display = showAll ? 'none' : 'block';
-                    }
+                        document.querySelectorAll('[data-kspb-toggle="detail-settings"]').forEach(function(input) {
+                            input.addEventListener('change', function() {
+                                var el = document.getElementById('kspb-detail-settings');
+                                if (el) el.style.display = input.checked ? 'none' : 'block';
+                            });
+                        });
+                        document.querySelectorAll('[data-kspb-confirm]').forEach(function(btn) {
+                            btn.addEventListener('click', function(e) {
+                                if (!window.confirm(btn.getAttribute('data-kspb-confirm'))) {
+                                    e.preventDefault();
+                                }
+                            });
+                        });
+                    });
                     </script>
                 </fieldset>
             </td>
@@ -591,12 +670,23 @@ class KSPB_Admin_Page {
                         <tr>
                             <td><label for="auth_password">パスワード</label></td>
                             <td>
-                                <input type="text"
+                                <?php $has_password = !empty($options['auth_password']); ?>
+                                <input type="password"
                                        name="auth_password"
                                        id="auth_password"
-                                       value="<?php echo esc_attr($options['auth_password'] ?? ''); ?>"
+                                       value=""
+                                       placeholder="<?php echo $has_password ? esc_attr__('保存済み（変更する場合のみ入力）', 'kashiwazaki-seo-perfect-breadcrumbs') : ''; ?>"
                                        class="regular-text"
-                                       autocomplete="off">
+                                       autocomplete="new-password">
+                                <?php if ($has_password): ?>
+                                    <label style="display:inline-block;margin-left:8px;">
+                                        <input type="checkbox" name="auth_password_clear" value="1">
+                                        <?php esc_html_e('パスワードを削除する', 'kashiwazaki-seo-perfect-breadcrumbs'); ?>
+                                    </label>
+                                <?php endif; ?>
+                                <p class="description" style="margin-top:4px;">
+                                    <?php esc_html_e('入力されたパスワードは wp_salt 由来の鍵で暗号化して保存されます。', 'kashiwazaki-seo-perfect-breadcrumbs'); ?>
+                                </p>
                             </td>
                         </tr>
                     </table>
@@ -604,7 +694,7 @@ class KSPB_Admin_Page {
 
                 <div style="margin-top: 10px;">
                     <button type="submit" name="clear_cache" class="button"
-                            onclick="return confirm('キャッシュをクリアしてもよろしいですか？');">
+                            data-kspb-confirm="キャッシュをクリアしてもよろしいですか？">
                         キャッシュをクリア
                     </button>
                     <span class="description" style="margin-left: 10px;">
@@ -678,7 +768,4 @@ class KSPB_Admin_Page {
         </div>
         <?php
     }
-}
-
-// 管理画面を表示
-KSPB_Admin_Page::render(); 
+} 
