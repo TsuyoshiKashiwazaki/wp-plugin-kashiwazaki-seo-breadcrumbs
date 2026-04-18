@@ -3,7 +3,7 @@
  * Plugin Name: Kashiwazaki SEO Perfect Breadcrumbs
  * Plugin URI: https://www.tsuyoshikashiwazaki.jp
  * Description: 高度なSEO対策を実現する多機能パンくずリストプラグイン。URLステータスチェック機能により404エラーを自動回避し、常に最適なパンくずリストを生成。構造化データ対応、6種類のデザインパターン、自動挿入機能を搭載。サブディレクトリインストールにも完全対応。
- * Version: 1.0.6
+ * Version: 1.0.7
  * Author: 柏崎剛 (Tsuyoshi Kashiwazaki)
  * Author URI: https://www.tsuyoshikashiwazaki.jp/profile/
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 // プラグイン定数
 define('KSPB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('KSPB_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('KSPB_PLUGIN_VERSION', '1.0.6');
+define('KSPB_PLUGIN_VERSION', '1.0.7');
 define('KSPB_OPTION_NAME', 'kspb_options');
 define('KSPB_TEXT_DOMAIN', 'kashiwazaki-seo-perfect-breadcrumbs');
 
@@ -661,7 +661,7 @@ class KSPB_Breadcrumb_Builder {
         $scraper = new KSPB_URL_Scraper($options);
         
         // 現在のページのURLを取得
-        $current_url = home_url($_SERVER['REQUEST_URI'] ?? '');
+        $current_url = esc_url_raw(home_url(wp_unslash($_SERVER['REQUEST_URI'] ?? '')));
 
         // 各セグメントを処理
         foreach ($segments as $index => $segment) {
@@ -812,7 +812,7 @@ class KSPB_Breadcrumb_Builder {
      */
     private function get_url_segments() {
         // 完全なURLパスを取得（WordPressインストールディレクトリも含む）
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $request_uri = wp_unslash($_SERVER['REQUEST_URI'] ?? '');
         $url_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
 
         // URLパスの全セグメントを取得し、URLデコードを適用
@@ -1079,7 +1079,7 @@ class KSPB_URL_Scraper {
      */
     public function check_url_status($url) {
         // 現在のページのURLはチェックしない（永久ループ防止）
-        $current_url = home_url($_SERVER['REQUEST_URI'] ?? '');
+        $current_url = esc_url_raw(home_url(wp_unslash($_SERVER['REQUEST_URI'] ?? '')));
         if ($url === $current_url || rtrim($url, '/') === rtrim($current_url, '/')) {
             return ['status' => 200, 'redirect_to' => null];
         }
@@ -1317,22 +1317,23 @@ class KSPB_Crypto {
 
     /**
      * 平文を暗号化して "enc:base64(nonce||cipher)" 形式で返す。
-     * 空文字列はそのまま返す。sodium 拡張が無い環境では平文を返す (best-effort)。
+     * 空文字列はそのまま返す。sodium 拡張が無い環境・暗号化失敗時は false を返す。
+     *
+     * @return string|false 暗号化文字列、または失敗時 false
      */
     public static function encrypt($plaintext) {
         if ($plaintext === null || $plaintext === '') {
             return '';
         }
         if (!function_exists('sodium_crypto_secretbox') || !defined('SODIUM_CRYPTO_SECRETBOX_NONCEBYTES')) {
-            return (string) $plaintext;
+            return false;
         }
-        // random_bytes はエントロピー枯渇などで例外を投げ得る。fatal を避け平文フォールバック。
         try {
             $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+            $cipher = sodium_crypto_secretbox((string) $plaintext, $nonce, self::key());
         } catch (\Exception $e) {
-            return (string) $plaintext;
+            return false;
         }
-        $cipher = sodium_crypto_secretbox((string) $plaintext, $nonce, self::key());
         return self::PREFIX . base64_encode($nonce . $cipher);
     }
 

@@ -227,7 +227,16 @@ class KSPB_Admin_Page {
                     $sanitized[$field] = '';
                 } elseif (isset($data[$field]) && $data[$field] !== '') {
                     $raw = (string) $data[$field];
-                    $sanitized[$field] = KSPB_Crypto::encrypt($raw);
+                    $encrypted = KSPB_Crypto::encrypt($raw);
+                    if ($encrypted === false) {
+                        $sanitized[$field] = $existing['auth_password'] ?? '';
+                        $sanitized['auth_username'] = $existing['auth_username'] ?? '';
+                        add_settings_error('kspb_messages', 'encrypt_failed',
+                            __('パスワードの暗号化に失敗しました（sodium拡張が未導入）。認証情報は既存の値を維持します。', 'kashiwazaki-seo-perfect-breadcrumbs'),
+                            'error');
+                    } else {
+                        $sanitized[$field] = $encrypted;
+                    }
                 } else {
                     $sanitized[$field] = $existing['auth_password'] ?? '';
                 }

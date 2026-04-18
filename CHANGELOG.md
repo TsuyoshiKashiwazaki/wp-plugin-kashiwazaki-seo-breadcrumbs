@@ -5,6 +5,12 @@ All notable changes to Kashiwazaki SEO Perfect Breadcrumbs will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-04-18
+
+### Security
+- `$_SERVER['REQUEST_URI']` の全使用箇所（3箇所）に `wp_unslash()` を適用。URL構築箇所には `esc_url_raw()` を追加（入力時サニタイズによる多層防御）
+- `KSPB_Crypto::encrypt()` を平文フォールバックからフェイルクローズに変更。sodium 拡張未導入時は `false` を返し、呼び出し元で既存の暗号化済み値を維持。管理画面に `add_settings_error()` でエラー通知を表示
+
 ## [1.0.6] - 2026-04-18
 
 ### Security
@@ -135,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.0.7]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.7
 [1.0.6]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.6
 [1.0.5]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.5
 [1.0.4]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.4

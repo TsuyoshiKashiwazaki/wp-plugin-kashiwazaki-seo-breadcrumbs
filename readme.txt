@@ -3,7 +3,7 @@ Contributors: tsuyoshikashiwazaki
 Tags: breadcrumbs, seo, navigation, schema.org, structured data, パンくずリスト, 構造化データ
 Requires at least: 5.0
 Tested up to: 6.4
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -191,6 +191,10 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 6. URLステータスチェック機能
 
 == Changelog ==
+
+= 1.0.7 =
+* Security: $_SERVER['REQUEST_URI'] の入力時サニタイズを追加（wp_unslash + esc_url_raw による多層防御）
+* Security: 暗号化処理（sodium未導入時）を平文フォールバックからフェイルクローズに変更。暗号化失敗時は既存値を維持し管理画面にエラー通知
 
 = 1.0.6 =
 * Security: Basic認証パスワードを sodium_crypto_secretbox で暗号化保存（sodium 不在環境では平文保存、1.0.5 以前からのアップグレード時は自動移行）
