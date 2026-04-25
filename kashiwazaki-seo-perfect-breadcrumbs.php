@@ -706,7 +706,19 @@ class KSPB_Breadcrumb_Builder {
                 }
             }
 
-            // 3. 投稿（post）と全カスタム投稿タイプの個別記事をチェック
+            // 3. URLから直接記事を特定（カテゴリ階層を考慮）
+            // url_to_postid() はパーマリンク構造（/%category%/%postname%/ など）を解釈して
+            // 正しい記事を返すため、スラッグ衝突時にも誤った記事を採用しない
+            if (!$title) {
+                $post_id = url_to_postid($url);
+                if ($post_id) {
+                    $title = get_the_title($post_id);
+                }
+            }
+
+            // 3-fallback. URLから特定できない場合は従来どおりスラッグで検索
+            // ただし、見つかった記事のパーマリンクが現在処理中のURLと一致するか検証し、
+            // 一致しない場合（= スラッグ衝突で別記事が返ってきた場合）は採用しない
             if (!$title) {
                 $post_types = get_post_types(['public' => true], 'names');
                 foreach ($post_types as $post_type) {
@@ -718,8 +730,15 @@ class KSPB_Breadcrumb_Builder {
                     ]);
 
                     if (!empty($posts)) {
-                        $title = get_the_title($posts[0]->ID);
-                        break;
+                        // 投稿の実際のパーマリンクと処理中URLが一致するか検証
+                        $post_url = get_permalink($posts[0]->ID);
+                        $normalized_post_url = rtrim($this->lowercase_percent_encoding($post_url), '/');
+                        $normalized_target_url = rtrim($this->lowercase_percent_encoding($url), '/');
+
+                        if ($normalized_post_url === $normalized_target_url) {
+                            $title = get_the_title($posts[0]->ID);
+                            break;
+                        }
                     }
                 }
             }
