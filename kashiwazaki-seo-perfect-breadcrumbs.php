@@ -3,7 +3,7 @@
  * Plugin Name: Kashiwazaki SEO Perfect Breadcrumbs
  * Plugin URI: https://www.tsuyoshikashiwazaki.jp
  * Description: 高度なSEO対策を実現する多機能パンくずリストプラグイン。URLステータスチェック機能により404エラーを自動回避し、常に最適なパンくずリストを生成。構造化データ対応、6種類のデザインパターン、自動挿入機能を搭載。サブディレクトリインストールにも完全対応。
- * Version: 1.0.7
+ * Version: 1.0.8
  * Author: 柏崎剛 (Tsuyoshi Kashiwazaki)
  * Author URI: https://www.tsuyoshikashiwazaki.jp/profile/
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 // プラグイン定数
 define('KSPB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('KSPB_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('KSPB_PLUGIN_VERSION', '1.0.7');
+define('KSPB_PLUGIN_VERSION', '1.0.8');
 define('KSPB_OPTION_NAME', 'kspb_options');
 define('KSPB_TEXT_DOMAIN', 'kashiwazaki-seo-perfect-breadcrumbs');
 
@@ -783,7 +783,7 @@ class KSPB_Breadcrumb_Builder {
                     $doc_title = wp_get_document_title();
                     if (!empty($doc_title)) {
                         // サイト名を削除
-                        $separators = ['|', '-', '–', '—', '»'];
+                        $separators = ['｜', '―', '|', '-', '–', '—', '»'];
                         foreach ($separators as $sep) {
                             if (strpos($doc_title, $sep) !== false) {
                                 $parts = array_map('trim', explode($sep, $doc_title));
@@ -1256,7 +1256,7 @@ class KSPB_URL_Scraper {
             $title = preg_replace('/\s+/', ' ', $title);
 
             // サイト名などの区切り文字で分割して最初の部分を取得
-            $separators = ['|', '-', '–', '—', ':', '»', '·'];
+            $separators = ['｜', '：', '―', '|', '-', '–', '—', ':', '»', '·'];
             foreach ($separators as $sep) {
                 if (strpos($title, $sep) !== false) {
                     $parts = explode($sep, $title);

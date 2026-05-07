@@ -3,7 +3,7 @@ Contributors: tsuyoshikashiwazaki
 Tags: breadcrumbs, seo, navigation, schema.org, structured data, パンくずリスト, 構造化データ
 Requires at least: 5.0
 Tested up to: 6.4
-Stable tag: 1.0.7
+Stable tag: 1.0.8
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -192,6 +192,9 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 
 == Changelog ==
 
+= 1.0.8 =
+* Added: タイトル分割の区切り文字に全角縦棒「｜」(U+FF5C)、全角コロン「：」(U+FF1A)、全角ダッシュ「―」(U+2015) を追加。日本語サイトの `<title>` で多用される全角区切りで分割されず、パンくずに記事タイトル全文が表示されてしまう問題を解消（GitHub Issue #2）
+
 = 1.0.7 =
 * Security: $_SERVER['REQUEST_URI'] の入力時サニタイズを追加（wp_unslash + esc_url_raw による多層防御）
 * Security: 暗号化処理（sodium未導入時）を平文フォールバックからフェイルクローズに変更。暗号化失敗時は既存値を維持し管理画面にエラー通知
@@ -253,6 +256,9 @@ URLチェック結果を24時間キャッシュすることで、パフォーマ
 * 日本語完全対応
 
 == Upgrade Notice ==
+
+= 1.0.8 =
+全角縦棒「｜」など日本語タイトルの区切り文字対応を追加。パンくずに記事タイトル全文が表示されていた問題を修正（GitHub Issue #2）。
 
 = 1.0.6 =
 キャッシュクリア不具合修正と Basic認証パスワード暗号化などのセキュリティ強化を含む重要更新。既存設定は互換を維持。

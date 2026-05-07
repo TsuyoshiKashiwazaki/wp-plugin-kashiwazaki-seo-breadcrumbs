@@ -5,6 +5,15 @@ All notable changes to Kashiwazaki SEO Perfect Breadcrumbs will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-05-07
+
+### Added
+- タイトル分割の区切り文字配列に**全角縦棒「｜」(U+FF5C)**、**全角コロン「：」(U+FF1A)**、**全角ダッシュ「―」(U+2015)** を追加。日本語サイトの `<title>` で多用される全角区切りで分割されず、パンくずに記事タイトル全文（サイト名込み）が表示されてしまう問題を解消（GitHub Issue #2）
+  - `KSPB_Breadcrumb_Builder::build_from_url_path()` の現在ページフォールバック処理: `｜`, `―` を追加
+  - `KSPB_URL_Scraper::extract_title()` の外部 URL タイトル抽出: `｜`, `：`, `―` を追加
+  - 全角文字を配列先頭に配置することで、日本語タイトルでの優先マッチを実現
+  - 既存の半角区切り文字 (`|`, `-`, `–`, `—`, `:`, `»`, `·`) は維持し、後方互換性を保証
+
 ## [1.0.7] - 2026-04-18
 
 ### Security
@@ -141,6 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.0.8]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.8
 [1.0.7]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.7
 [1.0.6]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.6
 [1.0.5]: https://github.com/TsuyoshiKashiwazaki/wp-plugin-kashiwazaki-seo-breadcrumbs/releases/tag/v1.0.5
